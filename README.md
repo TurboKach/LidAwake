@@ -16,16 +16,16 @@ A focused, closed-lid alternative to **Amphetamine** / **Caffeine**.
 
 - ☕ / 🌙 **menu bar toggle** — stay awake vs. sleep on lid close, at a glance.
 - **Per power source** — independent AC and battery policies; auto-applied on plug/unplug.
-- **Screen off when closed** — blanks the internal panel lid-shut (no external display); leaves real clamshell mode untouched.
+- **Screen off when closed** — blanks the internal panel on lid close, and the external monitor too (uncheck the toggle to keep clamshell mode and leave the external on).
 - **Launch at Login** (`⌘L`) — starts hidden in the menu bar.
 - Live status line, e.g. *“On battery · sleeps on lid close”*.
 
 ## How it works
 
 Toggles `pmset disablesleep` (`0` = sleep, `1` = stay awake) — one live, system-wide
-value, so LidAwake watches power changes and applies your per-source policy itself. With
-the lid closed and no external display, it runs `pmset displaysleepnow` to blank the
-internal screen. Requires **macOS 12+**.
+value, so LidAwake watches power changes and applies your per-source policy itself. On lid
+close it runs `pmset displaysleepnow` to blank the internal screen — and the external one
+too, unless you keep clamshell mode on. Requires **macOS 12+**.
 
 > [!NOTE]
 > Keeping a Mac awake lid-closed in a bag can get warm and drain the battery. Keep it

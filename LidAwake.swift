@@ -22,8 +22,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         get { UserDefaults.standard.bool(forKey: "awakeOnBattery") }
         set { UserDefaults.standard.set(newValue, forKey: "awakeOnBattery") }
     }
+    // When staying awake with the lid closed, also turn off an attached external
+    // display (fully headless) instead of leaving it on for clamshell. Defaults to on.
+    var offExternalOnLidClose: Bool {
+        get { UserDefaults.standard.bool(forKey: "offExternalOnLidClose") }
+        set { UserDefaults.standard.set(newValue, forKey: "offExternalOnLidClose") }
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UserDefaults.standard.register(defaults: ["offExternalOnLidClose": true])
         NSApp.setActivationPolicy(.accessory) // menu-bar only, no Dock icon
         let menu = NSMenu()
         menu.delegate = self
@@ -37,15 +44,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: - Lid → display off
 
-    // While staying awake with the lid closed, `disablesleep` keeps the internal panel
-    // powered. So when the lid is shut and there's no external display, put the display
-    // to sleep ourselves — the Mac stays awake, only the screen turns off.
+    // While staying awake with the lid closed, `disablesleep` keeps displays powered.
+    // So when the lid is shut, put the screen to sleep ourselves — the Mac stays awake,
+    // only the display turns off. The internal panel is always blanked; an external is
+    // blanked too unless the user keeps it on for clamshell (offExternalOnLidClose).
     func lidTick() {
         guard lidClosed() else { return }
         let stayAwake = onACPower() ? awakeOnAC : awakeOnBattery
-        guard stayAwake, !hasExternalDisplay() else { return } // clamshell w/ external: leave it on
-        if CGDisplayIsAsleep(CGMainDisplayID()) == 0 {          // display still on → sleep it
-            shell("/usr/bin/pmset", ["displaysleepnow"])        // no root needed
+        guard stayAwake else { return }
+        if hasExternalDisplay() && !offExternalOnLidClose { return } // clamshell: leave external on
+        if CGDisplayIsAsleep(CGMainDisplayID()) == 0 {               // a display still on → sleep it
+            shell("/usr/bin/pmset", ["displaysleepnow"])             // no root needed
         }
     }
 
@@ -214,6 +223,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let bat = NSMenuItem(title: "Stay Awake on Battery", action: #selector(toggleBattery), keyEquivalent: "")
         bat.state = awakeOnBattery ? .on : .off
         menu.addItem(bat)
+        let ext = NSMenuItem(title: "Turn Off External Display on Lid Close", action: #selector(toggleExternal), keyEquivalent: "")
+        ext.state = offExternalOnLidClose ? .on : .off
+        menu.addItem(ext)
         menu.addItem(.separator())
         let login = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "l")
         login.state = loginEnabled ? .on : .off
@@ -231,6 +243,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func toggleAC() { awakeOnAC.toggle(); applyForCurrentSource(auto: false) }
     @objc func toggleBattery() { awakeOnBattery.toggle(); applyForCurrentSource(auto: false) }
+    @objc func toggleExternal() { offExternalOnLidClose.toggle(); rebuildMenu() }
 
     // MARK: - Login item (via System Events)
 
