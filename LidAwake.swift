@@ -1,5 +1,6 @@
 import Cocoa
 import IOKit.ps
+import CoreGraphics
 
 // LidAwake keeps a per-power-source policy: independently decide whether the Mac
 // stays awake on lid close while on AC vs. on battery. `disablesleep` is a single
@@ -30,6 +31,41 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !hasPasswordlessSetup { promptSetup() } // ask once, right after install
         startPowerMonitor()
         applyForCurrentSource(auto: true)
+        // Poll the lid so we can sleep the internal display on lid close (see lidTick).
+        Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.lidTick() }
+    }
+
+    // MARK: - Lid → display off
+
+    // While staying awake with the lid closed, `disablesleep` keeps the internal panel
+    // powered. So when the lid is shut and there's no external display, put the display
+    // to sleep ourselves — the Mac stays awake, only the screen turns off.
+    func lidTick() {
+        guard lidClosed() else { return }
+        let stayAwake = onACPower() ? awakeOnAC : awakeOnBattery
+        guard stayAwake, !hasExternalDisplay() else { return } // clamshell w/ external: leave it on
+        if CGDisplayIsAsleep(CGMainDisplayID()) == 0 {          // display still on → sleep it
+            shell("/usr/bin/pmset", ["displaysleepnow"])        // no root needed
+        }
+    }
+
+    // AppleClamshellState on IOPMrootDomain: true == lid closed (verified empirically).
+    func lidClosed() -> Bool {
+        let root = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
+        guard root != 0 else { return false }
+        defer { IOObjectRelease(root) }
+        let p = IORegistryEntryCreateCFProperty(root, "AppleClamshellState" as CFString, kCFAllocatorDefault, 0)
+        return (p?.takeRetainedValue() as? Bool) ?? false
+    }
+
+    // True if any online display is not the built-in panel (i.e. an external is attached).
+    func hasExternalDisplay() -> Bool {
+        var count: UInt32 = 0
+        CGGetOnlineDisplayList(0, nil, &count)
+        guard count > 0 else { return false }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        CGGetOnlineDisplayList(count, &ids, &count)
+        return ids.contains { CGDisplayIsBuiltin($0) == 0 }
     }
 
     // MARK: - Power source

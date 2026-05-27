@@ -10,6 +10,12 @@ manages `pmset disablesleep` (`0` = sleep normally, `1` = stay awake on lid clos
 Because `disablesleep` is a single live system value (not stored per power source),
 LidAwake watches for plug/unplug events and applies the right setting itself.
 
+When a stay-awake policy keeps the Mac running with the lid closed and **no external
+display** is attached, `disablesleep` would otherwise leave the internal panel powered.
+LidAwake detects the closed lid and runs `pmset displaysleepnow` to turn the screen off
+while the Mac keeps running. With an external display attached it does nothing, so normal
+clamshell mode (external stays on) is preserved.
+
 ## Build
 
 ```sh
