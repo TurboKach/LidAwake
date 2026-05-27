@@ -24,11 +24,13 @@ Requires macOS 12 or later.
 2. Drag **LidAwake** onto the **Applications** folder.
 3. The app is not signed with an Apple Developer ID, so the first launch is blocked
    by Gatekeeper. To allow it:
-   - **Open** `/Applications/LidAwake.app` — macOS says it can't verify the developer.
-   - Go to **System Settings → Privacy & Security**, scroll to the LidAwake notice,
-     and click **Open Anyway**, then confirm.
+   - Double-click `/Applications/LidAwake.app`. macOS shows *“Apple could not verify
+     LidAwake is free of malware.”* Click **Done** — **not** *Move to Trash*.
+   - Open **System Settings → Privacy & Security** and scroll down. A line now reads
+     *“LidAwake was blocked…”* with an **Open Anyway** button — click it and confirm.
+     (On macOS 15+ this button lives in System Settings, not in the first dialog.)
 
-   Or, from Terminal, clear the quarantine flag in one step:
+   Or, from Terminal, clear the quarantine flag in one step — no System Settings trip:
 
    ```sh
    xattr -dr com.apple.quarantine /Applications/LidAwake.app
