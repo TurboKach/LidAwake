@@ -1,0 +1,6 @@
+# Build artifacts
+/LidAwake
+/LidAwake.app/
+
+# macOS
+.DS_Store
