@@ -24,6 +24,7 @@ cat > "$CONTENTS/Info.plist" <<'PLIST'
     <key>CFBundleIdentifier</key>     <string>local.lidawake</string>
     <key>CFBundlePackageType</key>    <string>APPL</string>
     <key>CFBundleShortVersionString</key> <string>1.0</string>
+    <key>CFBundleIconFile</key>       <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key> <string>12.0</string>
     <key>LSUIElement</key>            <true/>
     <key>NSAppleEventsUsageDescription</key>
@@ -31,6 +32,11 @@ cat > "$CONTENTS/Info.plist" <<'PLIST'
 </dict>
 </plist>
 PLIST
+
+if [ -f AppIcon.icns ]; then
+    mkdir -p "$CONTENTS/Resources"
+    cp AppIcon.icns "$CONTENTS/Resources/AppIcon.icns"
+fi
 
 echo "Built $APP"
 
