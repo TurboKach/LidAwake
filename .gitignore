@@ -1,6 +1,8 @@
 # Build artifacts
 /LidAwake
 /LidAwake.app/
+/LidAwake.dmg
+/dmg-staging/
 
 # macOS
 .DS_Store

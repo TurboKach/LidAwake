@@ -24,7 +24,7 @@ cat > "$CONTENTS/Info.plist" <<'PLIST'
     <key>CFBundleIdentifier</key>     <string>local.lidawake</string>
     <key>CFBundlePackageType</key>    <string>APPL</string>
     <key>CFBundleShortVersionString</key> <string>1.0</string>
-    <key>LSMinimumSystemVersion</key> <string>11.0</string>
+    <key>LSMinimumSystemVersion</key> <string>12.0</string>
     <key>LSUIElement</key>            <true/>
     <key>NSAppleEventsUsageDescription</key>
     <string>LidAwake uses System Events to manage its Login Items entry.</string>

@@ -16,7 +16,26 @@ LidAwake detects the closed lid and runs `pmset displaysleepnow` to turn the scr
 while the Mac keeps running. With an external display attached it does nothing, so normal
 clamshell mode (external stays on) is preserved.
 
-## Build
+Requires macOS 12 or later.
+
+## Install (from a release)
+
+1. Download `LidAwake.dmg` from the [Releases](../../releases) page and open it.
+2. Drag **LidAwake** onto the **Applications** folder.
+3. The app is not signed with an Apple Developer ID, so the first launch is blocked
+   by Gatekeeper. To allow it:
+   - **Open** `/Applications/LidAwake.app` — macOS says it can't verify the developer.
+   - Go to **System Settings → Privacy & Security**, scroll to the LidAwake notice,
+     and click **Open Anyway**, then confirm.
+
+   Or, from Terminal, clear the quarantine flag in one step:
+
+   ```sh
+   xattr -dr com.apple.quarantine /Applications/LidAwake.app
+   open /Applications/LidAwake.app
+   ```
+
+## Build from source
 
 ```sh
 swiftc LidAwake.swift -o LidAwake -framework Cocoa -framework IOKit
@@ -27,6 +46,12 @@ Or build the full `.app` bundle and install it:
 
 ```sh
 ./build.sh          # compiles, bundles, and copies to /Applications (asks before overwriting)
+```
+
+To produce a distributable universal DMG (arm64 + Intel, ad-hoc signed):
+
+```sh
+./release.sh        # builds LidAwake.dmg with a drag-to-Applications layout
 ```
 
 ## First launch
