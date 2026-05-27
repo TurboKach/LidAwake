@@ -32,3 +32,36 @@ itself off automatically.
 - Track transition from "≥1 running" → "0 running" and trigger the off-toggle
   on that edge only (avoid repeatedly toggling).
 - Surface watched processes + live status in the menu.
+
+## ✅ Per-power-source behavior (AC vs. battery) — DONE
+
+Implemented: independent AC/battery policies in the menu, IOKit power-source
+monitoring with automatic switching, and a one-time passwordless setup so it
+applies silently. Notes below kept for context.
+
+Let the lid-close-awake behavior differ depending on whether the Mac is on
+charger or on battery, so e.g. it stays awake when plugged in but always
+sleeps on battery (to protect battery life / avoid a hot bag).
+
+**Behavior:**
+- Independent settings for AC and battery, e.g. each can be:
+  *stay awake on lid close* / *sleep normally* / *follow the other* .
+- React to power-source changes at runtime: when the user unplugs/plugs in,
+  apply that source's configured policy automatically.
+- Reflect the active source + its policy in the menu.
+
+**Implementation notes:**
+- `pmset` already separates sources: `-c` = AC/charger, `-b` = battery,
+  `-a` = all. Today the app only writes `-c disablesleep`, so battery is
+  untouched. To honor a battery policy, write `-b disablesleep <0|1>` too.
+- Detect the current source and live changes via `IOPSNotificationCreateRunLoopSource`
+  / `IOPSCopyPowerSourcesInfo` (IOKit), or poll `pmset -g batt`.
+- Read state per source from `pmset -g` accordingly (note: `SleepDisabled` is a
+  single live value, not per-source — the per-source config is what *we* store
+  and apply, then push to `pmset` on source change).
+
+**Open questions:**
+- Where to persist config (a small JSON in `~/.config/lidawake/`, or
+  `UserDefaults`).
+- On battery, should an in-progress "stay awake" (e.g. from the watched-process
+  feature above) win, or should battery policy always force sleep?

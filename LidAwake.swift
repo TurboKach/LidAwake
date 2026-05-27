@@ -1,28 +1,111 @@
 import Cocoa
+import IOKit.ps
 
+// LidAwake keeps a per-power-source policy: independently decide whether the Mac
+// stays awake on lid close while on AC vs. on battery. `disablesleep` is a single
+// GLOBAL live value (not stored per-source and not auto-switched by macOS), so this
+// app detects the power source and writes the right value itself on every change.
 class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-    // true  = lid-close-awake on  (disablesleep 1)
-    // false = normal sleep behavior (disablesleep 0)
-    var awake = false
-    // Cached "is in Login Items?" flag, refreshed only when the menu opens
-    // (querying System Events costs a TCC automation check — don't do it at startup).
-    var loginEnabled = false
+    let sudoersPath = "/etc/sudoers.d/lidawake"
+    var powerSource: CFRunLoopSource?
+    var awake = false        // cached live SleepDisabled, for the icon
+    var loginEnabled = false // cached "in Login Items?", refreshed when menu opens
+
+    // Per-source policy (default: sleep normally on both).
+    var awakeOnAC: Bool {
+        get { UserDefaults.standard.bool(forKey: "awakeOnAC") }
+        set { UserDefaults.standard.set(newValue, forKey: "awakeOnAC") }
+    }
+    var awakeOnBattery: Bool {
+        get { UserDefaults.standard.bool(forKey: "awakeOnBattery") }
+        set { UserDefaults.standard.set(newValue, forKey: "awakeOnBattery") }
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory) // menu-bar only, no Dock icon
         let menu = NSMenu()
         menu.delegate = self
         statusItem.menu = menu
-        refresh()
+        if !hasPasswordlessSetup { promptSetup() } // ask once, right after install
+        startPowerMonitor()
+        applyForCurrentSource(auto: true)
     }
 
-    // Re-read live state right before the menu is shown.
-    func menuWillOpen(_ menu: NSMenu) {
-        loginEnabled = loginItemExists()
-        refresh()
+    // MARK: - Power source
+
+    // True when the Mac is running on the wall charger.
+    func onACPower() -> Bool {
+        let blob = IOPSCopyPowerSourcesInfo().takeRetainedValue()
+        let type = IOPSGetProvidingPowerSourceType(blob).takeUnretainedValue() as String
+        return type == kIOPSACPowerValue
     }
 
+    // Fire applyForCurrentSource() whenever the power source changes (plug/unplug).
+    func startPowerMonitor() {
+        let ctx = Unmanaged.passUnretained(self).toOpaque()
+        guard let src = IOPSNotificationCreateRunLoopSource({ ctx in
+            Unmanaged<AppDelegate>.fromOpaque(ctx!).takeUnretainedValue().applyForCurrentSource(auto: true)
+        }, ctx)?.takeRetainedValue() else { return }
+        powerSource = src
+        CFRunLoopAddSource(CFRunLoopGetCurrent(), src, .defaultMode)
+    }
+
+    // Bring the live setting in line with the current source's policy, then refresh UI.
+    // `auto` events (launch, plug/unplug) skip the change when not passwordless, so we
+    // never surprise the user with a password dialog they didn't trigger.
+    func applyForCurrentSource(auto: Bool) {
+        let desired = onACPower() ? awakeOnAC : awakeOnBattery
+        if liveAwake() != desired, !(auto && !hasPasswordlessSetup) {
+            setDisableSleep(desired)
+        }
+        updateUI()
+    }
+
+    // MARK: - pmset
+
+    func liveAwake() -> Bool {
+        // `disablesleep` is a live override shown by `pmset -g` (not `-g custom`).
+        shell("/usr/bin/pmset", ["-g"]).range(of: "SleepDisabled\\s+1", options: .regularExpression) != nil
+    }
+
+    func setDisableSleep(_ disabled: Bool) {
+        let v = disabled ? "1" : "0"
+        if hasPasswordlessSetup {
+            _ = shell("/usr/bin/sudo", ["-n", "/usr/bin/pmset", "-a", "disablesleep", v]) // no prompt
+        } else {
+            runAdmin("/usr/bin/pmset -a disablesleep \(v)") // prompts for password
+        }
+    }
+
+    // MARK: - One-time privileged setup
+
+    var hasPasswordlessSetup: Bool { FileManager.default.fileExists(atPath: sudoersPath) }
+
+    func promptSetup() {
+        let alert = NSAlert()
+        alert.messageText = "Let LidAwake manage sleep automatically?"
+        alert.informativeText = "LidAwake can switch lid-close sleep for AC and battery on its own. "
+            + "This needs a one-time admin approval so it never asks for your password again."
+        alert.addButton(withTitle: "Enable")
+        alert.addButton(withTitle: "Not Now")
+        if alert.runModal() == .alertFirstButtonReturn { installSudoersRule() }
+    }
+
+    func installSudoersRule() {
+        // Scoped NOPASSWD rule: only `pmset … disablesleep`, nothing else.
+        let rule = "\(NSUserName()) ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep *,"
+            + " /usr/bin/pmset -b disablesleep *, /usr/bin/pmset -c disablesleep *"
+        // Validate with `visudo -cf` before installing — a malformed file would break sudo.
+        // No double quotes in this command, so it embeds cleanly in the AppleScript string.
+        let sh = "f=$(mktemp) && echo '\(rule)' > $f && /usr/sbin/visudo -cf $f"
+            + " && /usr/bin/install -m 0440 -o root -g wheel $f \(sudoersPath); rm -f $f"
+        runAdmin(sh)
+    }
+
+    // MARK: - Shell helpers
+
+    @discardableResult
     func shell(_ launchPath: String, _ args: [String]) -> String {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: launchPath)
@@ -31,11 +114,41 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         task.standardOutput = pipe
         try? task.run()
         task.waitUntilExit()
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        return String(data: data, encoding: .utf8) ?? ""
+        return String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
     }
 
-    // Set the menu-bar icon: a coffee cup when staying awake, a sleeping moon otherwise.
+    // Run a shell command as root via the Apple-signed osascript (reliable from an
+    // ad-hoc-signed app, unlike in-process NSAppleScript). Inner quotes are escaped for AppleScript.
+    @discardableResult
+    func runAdmin(_ shellCmd: String) -> Bool {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        task.arguments = ["-e", "do shell script \"\(shellCmd)\" with administrator privileges"]
+        let errPipe = Pipe()
+        task.standardError = errPipe
+        try? task.run()
+        task.waitUntilExit()
+        if task.terminationStatus != 0 {
+            let msg = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+            if msg.contains("-128") || msg.contains("User canceled") { return false } // user hit Cancel
+            let alert = NSAlert()
+            alert.messageText = "LidAwake couldn't change the setting"
+            alert.informativeText = msg.isEmpty ? "Unknown error" : msg
+            alert.runModal()
+            return false
+        }
+        return true
+    }
+
+    // MARK: - UI
+
+    func updateUI() {
+        awake = liveAwake()
+        updateIcon()
+        rebuildMenu()
+    }
+
+    // Coffee cup when staying awake, sleeping moon otherwise.
     func updateIcon() {
         let symbol = awake ? "cup.and.saucer.fill" : "moon.zzz"
         guard let button = statusItem.button else { return }
@@ -44,8 +157,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             button.image = img
             button.title = ""
         } else {
-            // SF Symbols missing (older macOS): fall back to a unicode glyph.
-            button.image = nil
+            button.image = nil // SF Symbols missing: fall back to a unicode glyph
             button.title = awake ? "\u{2615}" : "\u{263E}"
         }
     }
@@ -53,78 +165,52 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func rebuildMenu() {
         let menu = statusItem.menu!
         menu.removeAllItems()
+        let onAC = onACPower()
         let status = NSMenuItem(
-            title: awake ? "Stays awake when lid closed" : "Sleeps when lid closed",
+            title: "On \(onAC ? "AC power" : "battery") · " + (awake ? "staying awake" : "sleeps on lid close"),
             action: nil, keyEquivalent: "")
         status.isEnabled = false
         menu.addItem(status)
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(
-            title: awake ? "Sleep When Lid Closed" : "Stay Awake When Lid Closed",
-            action: #selector(toggle), keyEquivalent: "t"))
-        menu.addItem(NSMenuItem(title: "Refresh", action: #selector(refresh), keyEquivalent: "r"))
+        let ac = NSMenuItem(title: "Stay Awake on AC Power", action: #selector(toggleAC), keyEquivalent: "")
+        ac.state = awakeOnAC ? .on : .off
+        menu.addItem(ac)
+        let bat = NSMenuItem(title: "Stay Awake on Battery", action: #selector(toggleBattery), keyEquivalent: "")
+        bat.state = awakeOnBattery ? .on : .off
+        menu.addItem(bat)
         menu.addItem(.separator())
-        let login = NSMenuItem(
-            title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "l")
+        let login = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "l")
         login.state = loginEnabled ? .on : .off
         menu.addItem(login)
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(
-            title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
-    // Ask System Events whether our app is registered as a login item.
+    func menuWillOpen(_ menu: NSMenu) {
+        loginEnabled = loginItemExists()
+        updateUI()
+    }
+
+    // MARK: - Actions
+
+    @objc func toggleAC() { awakeOnAC.toggle(); applyForCurrentSource(auto: false) }
+    @objc func toggleBattery() { awakeOnBattery.toggle(); applyForCurrentSource(auto: false) }
+
+    // MARK: - Login item (via System Events)
+
     func loginItemExists() -> Bool {
-        let out = shell("/usr/bin/osascript", ["-e",
-            "tell application \"System Events\" to return (exists login item \"LidAwake\")"])
-        return out.contains("true")
+        shell("/usr/bin/osascript", ["-e",
+            "tell application \"System Events\" to return (exists login item \"LidAwake\")"]).contains("true")
     }
 
     @objc func toggleLaunchAtLogin() {
-        // Add/remove ourselves via System Events. `hidden:true` launches it without
-        // stealing focus. First use prompts once for Automation permission.
+        // `hidden:true` launches without stealing focus. First use prompts once for Automation access.
         let script = loginEnabled
             ? "tell application \"System Events\" to delete login item \"LidAwake\""
             : "tell application \"System Events\" to make login item at end with properties {path:\"/Applications/LidAwake.app\", hidden:true}"
         _ = shell("/usr/bin/osascript", ["-e", script])
         loginEnabled = loginItemExists()
         rebuildMenu()
-    }
-
-    @objc func refresh() {
-        // `disablesleep` is a live runtime override: it shows up in `pmset -g`
-        // (the active settings) but NOT in `pmset -g custom` (the saved profile).
-        // Whitespace-tolerant match of "SleepDisabled" followed by 1.
-        let out = shell("/usr/bin/pmset", ["-g"])
-        awake = out.range(of: "SleepDisabled\\s+1", options: .regularExpression) != nil
-        updateIcon()
-        rebuildMenu()
-    }
-
-    @objc func toggle() {
-        let newValue = awake ? "0" : "1"
-        // pmset needs root. We shell out to the Apple-signed /usr/bin/osascript, which
-        // reliably shows the admin password dialog — running this same AppleScript
-        // in-process (NSAppleScript) from our ad-hoc-signed app fails "Authorization failed".
-        // The inner shell command is wrapped in \"...\" — those quotes are escaped for AppleScript.
-        let appleScript = "do shell script \"/usr/bin/pmset -c disablesleep \(newValue)\" with administrator privileges"
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        task.arguments = ["-e", appleScript]
-        let errPipe = Pipe()
-        task.standardError = errPipe
-        try? task.run()
-        task.waitUntilExit()
-        if task.terminationStatus != 0 {
-            let msg = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-            // -128 = user clicked Cancel at the password prompt; ignore silently.
-            if msg.contains("-128") || msg.contains("User canceled") { return }
-            let alert = NSAlert()
-            alert.messageText = "Couldn't change sleep setting"
-            alert.informativeText = msg.isEmpty ? "Unknown error" : msg
-            alert.runModal()
-        }
-        refresh() // reflect the new state after toggling
     }
 }
 

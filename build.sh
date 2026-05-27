@@ -7,7 +7,7 @@ APP="LidAwake.app"
 CONTENTS="$APP/Contents"
 
 echo "Compiling LidAwake.swift…"
-swiftc LidAwake.swift -o LidAwake -framework Cocoa
+swiftc LidAwake.swift -o LidAwake -framework Cocoa -framework IOKit
 
 echo "Building $APP bundle…"
 rm -rf "$APP"
