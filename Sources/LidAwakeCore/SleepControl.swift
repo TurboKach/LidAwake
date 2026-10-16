@@ -1,4 +1,5 @@
 import Foundation
+import IOKit
 
 public protocol SleepControlling {
     func isAwake() throws -> Bool
@@ -15,13 +16,31 @@ protocol PowerSettings {
 final class PMSet: PowerSettings {
     let runner: CommandRunning
     let setup: PrivilegeSetup
-    init(runner: CommandRunning, setup: PrivilegeSetup) {
+    let rootDomainSleepDisabled: () -> Bool?
+    init(runner: CommandRunning, setup: PrivilegeSetup,
+         rootDomainSleepDisabled: @escaping () -> Bool? = PMSet.readRootDomainSleepDisabled) {
         self.runner = runner
         self.setup = setup
+        self.rootDomainSleepDisabled = rootDomainSleepDisabled
     }
 
+    /// On macOS 27, `pmset -g` omits `SleepDisabled` until it has been written explicitly.
+    /// The IORegistry value tracks the same setting, so use it when the text output has no usable line.
+    /// A read that fails both ways still throws; it never assumes sleep is enabled.
     func read() throws -> Bool {
-        try Self.parse(runner.run("/usr/bin/pmset", ["-g"], timeout: 10).stdout)
+        let output = try runner.run("/usr/bin/pmset", ["-g"], timeout: 10).stdout
+        if let value = try? Self.parse(output) { return value }
+        if let value = rootDomainSleepDisabled() { return value }
+        throw ControlError.message("Could not read the current sleep setting.")
+    }
+
+    static func readRootDomainSleepDisabled() -> Bool? {
+        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
+        guard service != IO_OBJECT_NULL else { return nil }
+        defer { IOObjectRelease(service) }
+        let value = IORegistryEntryCreateCFProperty(service, "SleepDisabled" as CFString, kCFAllocatorDefault, 0)?
+            .takeRetainedValue()
+        return value as? Bool
     }
 
     static func parse(_ output: String) throws -> Bool {

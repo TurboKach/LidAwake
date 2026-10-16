@@ -142,6 +142,25 @@ final class SystemAdaptersTests: XCTestCase {
         XCTAssertTrue(runner.calls.isEmpty)
     }
 
+    func testPMSetReadFallsBackToRootDomainWhenPMSetOmitsSleepDisabled() throws {
+        let runner = RecordingRunner()
+        runner.respond = { _ in CommandOutput(stdout: "System-wide power settings:\nCurrently in use:\n standby 1\n") }
+        XCTAssertFalse(try PMSet(runner: runner, setup: PrivilegeSetup(runner: runner), rootDomainSleepDisabled: { false }).read())
+        XCTAssertTrue(try PMSet(runner: runner, setup: PrivilegeSetup(runner: runner), rootDomainSleepDisabled: { true }).read())
+    }
+
+    func testPMSetReadThrowsWhenPMSetAndRootDomainBothFail() {
+        let runner = RecordingRunner()
+        runner.respond = { _ in CommandOutput(stdout: "") }
+        XCTAssertThrowsError(try PMSet(runner: runner, setup: PrivilegeSetup(runner: runner), rootDomainSleepDisabled: { nil }).read())
+    }
+
+    func testPMSetReadPrefersPMSetWhenItReportsSleepDisabled() throws {
+        let runner = RecordingRunner()
+        runner.respond = { _ in CommandOutput(stdout: " SleepDisabled 1\n") }
+        XCTAssertTrue(try PMSet(runner: runner, setup: PrivilegeSetup(runner: runner), rootDomainSleepDisabled: { false }).read())
+    }
+
     func testPMSetReadPropagatesProcessFailureEvenWithValidLookingOutput() {
         let runner = RecordingRunner()
         runner.respond = { _ in throw ControlError.message("pmset unavailable") }
