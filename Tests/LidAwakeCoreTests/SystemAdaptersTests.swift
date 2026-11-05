@@ -27,6 +27,32 @@ final class SystemAdaptersTests: XCTestCase {
         }
     }
 
+    /// macOS 27 omits SleepDisabled from `pmset -g` entirely; IOPMrootDomain still carries it.
+    func testReadFallsBackToTheRegistryWhenPmsetOmitsSleepDisabled() throws {
+        let runner = RecordingRunner()
+        runner.respond = { _ in CommandOutput(stdout: "System-wide power settings:\nCurrently in use:\n sleep 1\n displaysleep 5\n") }
+        for registry in [true, false] {
+            let pmset = PMSet(runner: runner, setup: PrivilegeSetup(runner: runner), registryState: { registry })
+            XCTAssertEqual(try pmset.read(), registry)
+        }
+    }
+
+    /// Output that does report SleepDisabled but cannot be parsed stays an error: the fallback
+    /// must not turn an ambiguous or malformed reading into "sleep enabled".
+    func testReadKeepsFailingWhenPmsetReportsSleepDisabledUnparseably() {
+        for output in ["SleepDisabled 10", "SleepDisabled 1\nSleepDisabled 0"] {
+            let runner = RecordingRunner()
+            runner.respond = { _ in CommandOutput(stdout: output) }
+            let pmset = PMSet(runner: runner, setup: PrivilegeSetup(runner: runner),
+                              registryState: { XCTFail("the registry must not mask \(output)"); return false })
+            XCTAssertThrowsError(try pmset.read(), output)
+        }
+    }
+
+    func testRegistryReadReturnsTheLiveSleepOverrideStateWithoutRoot() {
+        XCTAssertNoThrow(try PMSet.registrySleepDisabled())
+    }
+
     func testPMSetVerifiesTheActualWriteAndDoesNotUseCachedCredentials() throws {
         let runner = RecordingRunner()
         runner.respond = { args in CommandOutput(stdout: args == ["-g"] ? "SleepDisabled 0" : "") }
