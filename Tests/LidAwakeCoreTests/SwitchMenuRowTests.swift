@@ -37,30 +37,142 @@ final class SwitchMenuRowTests: XCTestCase {
         XCTAssertTrue(statusIcon.image === originalImage)
     }
 
-    func testClickKeepsRequestedPositionDuringWorkAndRollsBackOnFailure() throws {
-        _ = NSApplication.shared
+    // MARK: A running operation (both layouts)
+
+    private func switchEntry(_ layout: SwitchMenuRow.Layout, on: Bool, enabled: Bool = true,
+                             id: String = "ac") -> MenuEntry {
+        layout == .regular ? entry(on: on, enabled: enabled) : compactEntry(id: id, on: on, enabled: enabled)
+    }
+
+    /// One switch row plus a target whose action stands in for `perform(showFailure: true)`:
+    /// it reports the operation as running at once, as the app does.
+    private struct Harness {
+        let target = Target(), menu = NSMenu()
+        let renderer: StableMenu
+        let row: SwitchMenuRow
+        let layout: SwitchMenuRow.Layout
+        var calls = 0
+
+        init(_ layout: SwitchMenuRow.Layout, entry: MenuEntry) throws {
+            _ = NSApplication.shared
+            self.layout = layout
+            menu.autoenablesItems = false
+            renderer = StableMenu(menu: menu)
+            renderer.update([entry], target: target)
+            row = try XCTUnwrap(menu.items.first?.view as? SwitchMenuRow)
+        }
+    }
+
+    func testRunningOperationKeepsRequestedPositionAndConfirmsOnSuccess() throws {
+        for layout in [SwitchMenuRow.Layout.regular, .compact] {
+            let h = try Harness(layout, entry: switchEntry(layout, on: true))
+            var calls = 0
+            h.target.change = {
+                calls += 1
+                h.renderer.update([self.switchEntry(layout, on: true)], target: h.target, operationInFlight: true)
+            }
+            h.row.toggle.performClick(nil)
+            XCTAssertEqual(calls, 1, "\(layout)")
+            XCTAssertEqual(h.row.toggle.state, .off, "\(layout): the knob keeps the requested position")
+            XCTAssertTrue(h.row.toggle.isEnabled, "\(layout): the switch is not dimmed for the operation")
+            XCTAssertTrue(h.menu.items[0].isEnabled, "\(layout)")
+            // Polls while it runs change nothing.
+            h.renderer.update([switchEntry(layout, on: true)], target: h.target, operationInFlight: true)
+            XCTAssertEqual(h.row.toggle.state, .off, "\(layout)")
+            // Success: the item's new state; the knob is where it already was.
+            h.renderer.update([switchEntry(layout, on: false)], target: h.target)
+            XCTAssertEqual(h.row.toggle.state, .off, "\(layout)")
+            XCTAssertEqual(calls, 1, "\(layout)")
+        }
+    }
+
+    func testFailedOperationRollsTheKnobBack() throws {
+        for layout in [SwitchMenuRow.Layout.regular, .compact] {
+            let h = try Harness(layout, entry: switchEntry(layout, on: true))
+            h.target.change = {
+                h.renderer.update([self.switchEntry(layout, on: true)], target: h.target, operationInFlight: true)
+            }
+            h.row.toggle.performClick(nil)
+            XCTAssertEqual(h.row.toggle.state, .off, "\(layout)")
+            h.renderer.update([switchEntry(layout, on: true)], target: h.target)
+            XCTAssertEqual(h.row.toggle.state, .on, "\(layout)")
+            XCTAssertTrue(h.row.toggle.isEnabled, "\(layout)")
+        }
+    }
+
+    func testRejectedClickRollsTheKnobBack() throws {
+        for layout in [SwitchMenuRow.Layout.regular, .compact] {
+            let h = try Harness(layout, entry: switchEntry(layout, on: true))
+            var calls = 0
+            // The handler's guard refused, or the setup prompt was canceled: no operation starts.
+            h.target.change = { calls += 1 }
+            h.row.toggle.performClick(nil)
+            XCTAssertEqual(calls, 1, "\(layout)")
+            XCTAssertEqual(h.row.toggle.state, .on, "\(layout)")
+        }
+    }
+
+    func testSecondClickDuringAnOperationStartsNothingAndEndsOnTheTrueState() throws {
+        for layout in [SwitchMenuRow.Layout.regular, .compact] {
+            for succeeds in [true, false] {
+                let h = try Harness(layout, entry: switchEntry(layout, on: true))
+                var calls = 0
+                h.target.change = {
+                    calls += 1
+                    h.renderer.update([self.switchEntry(layout, on: true)], target: h.target, operationInFlight: true)
+                }
+                h.row.toggle.performClick(nil)
+                h.row.toggle.performClick(nil)
+                XCTAssertEqual(calls, 1, "\(layout): no second action")
+                XCTAssertEqual(h.row.toggle.state, .off, "\(layout): the knob stays at the requested position")
+                h.renderer.update([switchEntry(layout, on: !succeeds)], target: h.target)
+                XCTAssertEqual(h.row.toggle.state, succeeds ? .off : .on, "\(layout): the true state")
+            }
+        }
+    }
+
+    func testClickOnAnotherSwitchDuringAnOperationStartsNothing() throws {
         let target = Target(), menu = NSMenu()
         menu.autoenablesItems = false
         let renderer = StableMenu(menu: menu)
-        renderer.update([entry(on: true)], target: target)
-        let row = try XCTUnwrap(menu.items.first?.view as? SwitchMenuRow)
+        _ = NSApplication.shared
+        func entries(_ ac: Bool, _ battery: Bool) -> [MenuEntry] {
+            [compactEntry(id: "ac", on: ac), compactEntry(id: "battery", title: "On Battery", on: battery,
+                                                         symbol: "battery.100")]
+        }
+        renderer.update(entries(true, false), target: target)
+        let first = try compactRow(menu, at: 0), second = try compactRow(menu, at: 1)
         var calls = 0
         target.change = {
             calls += 1
-            renderer.update([self.entry(on: true, enabled: false)], target: target)
+            renderer.update(entries(true, false), target: target, operationInFlight: true)
         }
-        row.toggle.performClick(nil)
+        first.toggle.performClick(nil)
+        second.toggle.performClick(nil)
         XCTAssertEqual(calls, 1)
-        XCTAssertEqual(row.toggle.state, .off)
-        XCTAssertFalse(row.toggle.isEnabled)
-        renderer.update([entry(on: true)], target: target)
-        XCTAssertEqual(row.toggle.state, .on)
-        XCTAssertTrue(row.toggle.isEnabled)
-        // Canceling setup may return without starting a background operation.
-        target.change = { calls += 1 }
-        row.toggle.performClick(nil)
-        XCTAssertEqual(calls, 2)
-        XCTAssertEqual(row.toggle.state, .on)
+        XCTAssertEqual(first.toggle.state, .off)
+        XCTAssertEqual(second.toggle.state, .off, "the other knob shows its item's state")
+        renderer.update(entries(false, false), target: target)
+        XCTAssertEqual(first.toggle.state, .off)
+        XCTAssertEqual(second.toggle.state, .off)
+    }
+
+    func testOperationStartAndEndPostNoMenuNotificationAndReplaceNoView() throws {
+        for layout in [SwitchMenuRow.Layout.regular, .compact] {
+            let h = try Harness(layout, entry: switchEntry(layout, on: true))
+            let item = h.menu.items[0]
+            let frame = h.row.frame
+            var notifications = 0
+            let observer = NotificationCenter.default.addObserver(forName: NSMenu.didChangeItemNotification,
+                                                                  object: h.menu, queue: nil) { _ in notifications += 1 }
+            defer { NotificationCenter.default.removeObserver(observer) }
+            for _ in 0..<3 { h.renderer.update([switchEntry(layout, on: true)], target: h.target, operationInFlight: true) }
+            for _ in 0..<3 { h.renderer.update([switchEntry(layout, on: true)], target: h.target) }
+            XCTAssertEqual(notifications, 0, "\(layout)")
+            XCTAssertTrue(item.view === h.row, "\(layout)")
+            XCTAssertEqual(h.row.frame, frame, "\(layout)")
+            XCTAssertTrue(item.isEnabled, "\(layout)")
+        }
     }
 
     func testKeyboardEquivalentAndDisabledStateUseTheSameMenuAction() throws {
@@ -147,34 +259,6 @@ final class SwitchMenuRowTests: XCTestCase {
         XCTAssertEqual(row.frame, frame)
         XCTAssertEqual(notifications, 0)
         XCTAssertTrue(icon.image === image)
-    }
-
-    func testCompactClickKeepsRequestedPositionAndRollsBackOrConfirms() throws {
-        _ = NSApplication.shared
-        let target = Target(), menu = NSMenu()
-        menu.autoenablesItems = false
-        let renderer = StableMenu(menu: menu)
-        renderer.update([compactEntry(on: true)], target: target)
-        let row = try compactRow(menu)
-        var calls = 0
-        target.change = {
-            calls += 1
-            renderer.update([self.compactEntry(on: true, enabled: false)], target: target)
-        }
-        row.toggle.performClick(nil)
-        XCTAssertEqual(calls, 1)
-        XCTAssertEqual(row.toggle.state, .off)
-        XCTAssertFalse(row.toggle.isEnabled)
-        // The state did not change: roll back.
-        renderer.update([compactEntry(on: true)], target: target)
-        XCTAssertEqual(row.toggle.state, .on)
-        XCTAssertTrue(row.toggle.isEnabled)
-        // The state changed: confirm.
-        row.toggle.performClick(nil)
-        XCTAssertEqual(calls, 2)
-        renderer.update([compactEntry(on: false)], target: target)
-        XCTAssertEqual(row.toggle.state, .off)
-        XCTAssertEqual(calls, 2)
     }
 
     func testDisabledCompactRowSendsNoAction() throws {

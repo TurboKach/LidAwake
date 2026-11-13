@@ -283,7 +283,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func updateMenu() {
         var entries = [MenuEntry]()
-        let controlsEnabled = pendingUserOperations == 0 && !gate.locksMenuActions
+        // A running user operation never dims a row: each action refuses to start while one runs
+        // (`pendingUserOperations`), and `operationInFlight` only holds a clicked switch in place.
+        let controlsEnabled = !gate.locksMenuActions
         let awakeControlsEnabled = controlsEnabled && state.policy.isEnabled
         func item(_ id: String, _ title: String, _ action: Selector? = nil, key: String = "",
                   checked: Bool? = false, enabled: Bool = true, indent: Int = 0, symbol: String? = nil,
@@ -318,7 +320,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         item("updates", checkingUpdates ? L("Checking for Updates…", "Проверка обновлений…") : L("Check for Updates…", "Проверить обновления…"), #selector(checkForUpdates), enabled: !checkingUpdates)
         entries.append(.separator("quit-separator"))
         item("quit", L("Quit", "Выйти"), #selector(quitApp), key: "q", enabled: !terminating)
-        menuRenderer?.update(entries, target: self)
+        menuRenderer?.update(entries, target: self, operationInFlight: pendingUserOperations > 0)
     }
 
     @objc private func quitApp() { NSApp.terminate(nil) }
@@ -349,7 +351,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         offExternal.toggle()
         updateUI()
     }
-    @objc private func setupSleep() { promptSetup() }
+    @objc private func setupSleep() {
+        guard pendingUserOperations == 0 else { return }
+        promptSetup()
+    }
     private func promptSetup(afterSuccess: (() -> Void)? = nil) {
         statusItem.menu?.cancelTracking()
         let alert = NSAlert()
@@ -366,6 +371,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }, showFailure: true, completion: { error in if error == nil { afterSuccess?() } })
     }
     @objc private func uninstallApp() {
+        guard pendingUserOperations == 0 else { return }
         statusItem.menu?.cancelTracking()
         let alert = NSAlert()
         alert.messageText = L("Uninstall LidAwake?", "Удалить LidAwake?")
@@ -410,6 +416,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         })
     }
     @objc private func toggleLogin() {
+        guard pendingUserOperations == 0 else { return }
         perform({ runtime in
             do {
                 try runtime.login.setEnabled(!runtime.login.isEnabled())

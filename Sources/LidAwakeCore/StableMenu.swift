@@ -41,11 +41,14 @@ public final class StableMenu {
     private var items = [String: NSMenuItem]()
     private var images = [String: NSImage]()
     private weak var target: AnyObject?
+    private var operationInFlight = false
 
     public init(menu: NSMenu) { self.menu = menu }
 
-    public func update(_ entries: [MenuEntry], target: AnyObject) {
-        guard self.entries != entries || self.target !== target else { return }
+    /// `operationInFlight` tells the switch rows that a user operation runs: it never changes an item's
+    /// look, it only holds a clicked knob at its requested position until the operation ends.
+    public func update(_ entries: [MenuEntry], target: AnyObject, operationInFlight: Bool = false) {
+        guard self.entries != entries || self.target !== target || self.operationInFlight != operationInFlight else { return }
         let wanted = Set(entries.map(\.id))
         let hasStateColumn = entries.contains { $0.state != .off }
         for id in Array(items.keys) where !wanted.contains(id) {
@@ -91,6 +94,7 @@ public final class StableMenu {
                     item.view = row
                 }
                 row.hasStateColumn = hasStateColumn
+                row.operationInFlight = operationInFlight
                 if item.image != nil { item.image = nil }
                 row.updateStatus(subtitle: entry.subtitle, image: icon)
                 row.update()
@@ -101,5 +105,6 @@ public final class StableMenu {
         }
         self.entries = entries
         self.target = target
+        self.operationInFlight = operationInFlight
     }
 }

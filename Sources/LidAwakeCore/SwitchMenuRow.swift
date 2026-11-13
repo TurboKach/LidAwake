@@ -42,7 +42,10 @@ final class SwitchMenuRow: NSView {
     private let subtitleLabel = NSTextField(labelWithString: "")
     private let statusIcon = NSImageView()
     let toggle = NSSwitch()
-    private var awaitingChange = false
+    /// A user operation is running. Set by `StableMenu`; the row keeps its look, only the knob is held.
+    var operationInFlight = false
+    /// The position a click asked for, kept until the operation ends.
+    private var requestedState: NSControl.StateValue?
     private var fitIndent = 0
 
     init(item: NSMenuItem, layout: Layout = .regular) {
@@ -165,12 +168,11 @@ final class SwitchMenuRow: NSView {
             fitWidth()
         }
         if toggle.isEnabled != item.isEnabled { toggle.isEnabled = item.isEnabled }
-        // A click animates immediately. While the operation is pending, keep that
-        // position; the next enabled update confirms success or rolls it back.
-        if !awaitingChange || item.isEnabled {
-            if toggle.state != item.state { toggle.state = item.state }
-            awaitingChange = false
-        }
+        // A click animates immediately. While the operation runs, keep that position; when it ends the
+        // knob shows the item's state: the new one on success, the old one on failure or a rejected click.
+        if !operationInFlight { requestedState = nil }
+        let shown = operationInFlight ? requestedState ?? item.state : item.state
+        if toggle.state != shown { toggle.state = shown }
         let color = item.isEnabled ? NSColor.labelColor : .disabledControlTextColor
         if label.textColor != color { label.textColor = color }
         if rowLayout == .compact {
@@ -195,8 +197,9 @@ final class SwitchMenuRow: NSView {
     }
 
     @objc private func switchChanged(_ sender: NSSwitch) {
-        guard let item = item, item.isEnabled, let action = item.action else { update(); return }
-        awaitingChange = true
+        // A click during an operation neither starts another nor moves the knob.
+        guard let item = item, item.isEnabled, !operationInFlight, let action = item.action else { update(); return }
+        requestedState = toggle.state
         NSApplication.shared.sendAction(action, to: item.target, from: sender)
         // Setup may have been canceled without starting an operation.
         update()
