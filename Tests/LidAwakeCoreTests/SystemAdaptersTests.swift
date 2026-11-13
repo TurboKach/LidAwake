@@ -2,12 +2,17 @@ import XCTest
 import Darwin
 @testable import LidAwakeCore
 
-final class RecordingRunner: CommandRunning {
+final class RecordingRunner: CommandRunning, AppleScriptRunning {
     var calls = [(String, [String])]()
+    var scripts = [String]()
     var respond: ([String]) throws -> CommandOutput = { _ in CommandOutput() }
     func run(_ executable: String, _ arguments: [String], timeout: TimeInterval) throws -> CommandOutput {
         calls.append((executable, arguments))
         return try respond(arguments)
+    }
+    func run(_ source: String) throws -> String {
+        scripts.append(source)
+        return try respond([source]).stdout
     }
 }
 
@@ -251,10 +256,9 @@ final class SystemAdaptersTests: XCTestCase {
         try runUninstallScript(setup) // Already removed.
 
         try setup.uninstall()
-        XCTAssertEqual(runner.calls.count, 1)
-        XCTAssertEqual(runner.calls[0].0, "/usr/bin/osascript")
-        XCTAssertEqual(runner.calls[0].1, ["-e",
-            "do shell script \(appleScriptString(setup.uninstallationScript)) with administrator privileges"])
+        XCTAssertEqual(runner.scripts,
+            ["do shell script \(appleScriptString(setup.uninstallationScript)) with administrator privileges"])
+        XCTAssertTrue(runner.calls.isEmpty)
     }
 
     func testAdminPromptsAreAddedToTheScriptLinesAndEscaped() throws {
@@ -267,21 +271,21 @@ final class SystemAdaptersTests: XCTestCase {
                                     installPrompt: "Install \"LidAwake\"\nnow", uninstallPrompt: "Remove \"LidAwake\"\nnow")
         for setup in [unset, install, tricky] {
             _ = try? setup.install() // Not verified afterwards: the fake runner installs nothing.
-            _ = try? setup.uninstall() // Fails the same way; only the osascript arguments matter here.
+            _ = try? setup.uninstall() // Fails the same way; only the script text matters here.
         }
-        XCTAssertEqual(plain.calls.map { $0.1 }, [
-            ["-e", "do shell script \(appleScriptString(unset.installationScript)) with administrator privileges"],
-            ["-e", "do shell script \(appleScriptString(unset.uninstallationScript)) with administrator privileges"]])
-        XCTAssertEqual(prompted.calls.map { $0.1 }, [
-            ["-e", "do shell script \(appleScriptString(install.installationScript))"
-                + " with prompt \"LidAwake needs an administrator to install its sleep rule.\" with administrator privileges"],
-            ["-e", "do shell script \(appleScriptString(install.uninstallationScript))"
-                + " with prompt \"LidAwake needs an administrator to remove its sleep rule.\" with administrator privileges"]])
-        XCTAssertEqual(escaped.calls.map { $0.1 }, [
-            ["-e", "do shell script \(appleScriptString(tricky.installationScript))"
-                + " with prompt \"Install \\\"LidAwake\\\"\\nnow\" with administrator privileges"],
-            ["-e", "do shell script \(appleScriptString(tricky.uninstallationScript))"
-                + " with prompt \"Remove \\\"LidAwake\\\"\\nnow\" with administrator privileges"]])
+        XCTAssertEqual(plain.scripts, [
+            "do shell script \(appleScriptString(unset.installationScript)) with administrator privileges",
+            "do shell script \(appleScriptString(unset.uninstallationScript)) with administrator privileges"])
+        XCTAssertEqual(prompted.scripts, [
+            "do shell script \(appleScriptString(install.installationScript))"
+                + " with prompt \"LidAwake needs an administrator to install its sleep rule.\" with administrator privileges",
+            "do shell script \(appleScriptString(install.uninstallationScript))"
+                + " with prompt \"LidAwake needs an administrator to remove its sleep rule.\" with administrator privileges"])
+        XCTAssertEqual(escaped.scripts, [
+            "do shell script \(appleScriptString(tricky.installationScript))"
+                + " with prompt \"Install \\\"LidAwake\\\"\\nnow\" with administrator privileges",
+            "do shell script \(appleScriptString(tricky.uninstallationScript))"
+                + " with prompt \"Remove \\\"LidAwake\\\"\\nnow\" with administrator privileges"])
     }
 
     func testUninstallerRefusesSymlinksAndRemovesNothing() throws {
@@ -443,6 +447,34 @@ final class SystemAdaptersTests: XCTestCase {
         XCTAssertThrowsError(try runner.run("/bin/sh", ["-c", "echo 'execution error: User canceled. (-128)' >&2; exit 1"], timeout: 2)) {
             XCTAssertEqual($0 as? ControlError, .canceled)
         }
+    }
+
+    /// Scripts here need no password: no dialog opens.
+    private func assertInProcessScriptsBehave() {
+        let runner = InProcessAppleScriptRunner()
+        XCTAssertEqual(try runner.run("do shell script \"echo hi\""), "hi")
+        XCTAssertThrowsError(try runner.run("do shell script \"echo refused >&2; exit 3\"")) {
+            guard case let ControlError.message(text)? = $0 as? ControlError else { return XCTFail("\($0)") }
+            XCTAssertTrue(text.contains("refused"), text)
+        }
+        XCTAssertThrowsError(try runner.run("error number -128")) {
+            XCTAssertEqual($0 as? ControlError, .canceled)
+        }
+    }
+
+    func testInProcessAppleScriptRunnerMapsResultsFailuresAndCancellationOnTheMainThread() {
+        XCTAssertTrue(Thread.isMainThread)
+        assertInProcessScriptsBehave()
+    }
+
+    func testInProcessAppleScriptRunnerMapsResultsFailuresAndCancellationOnABackgroundQueue() {
+        let done = expectation(description: "scripts ran")
+        DispatchQueue(label: "lidawake.test.applescript").async {
+            XCTAssertFalse(Thread.isMainThread)
+            self.assertInProcessScriptsBehave()
+            done.fulfill()
+        }
+        wait(for: [done], timeout: 30)
     }
 
     func testCommandTimeoutAndLargeOutputDoNotHang() throws {

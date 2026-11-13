@@ -80,6 +80,33 @@ public final class ProcessCommandRunner: CommandRunning {
     }
 }
 
+/// Runs one AppleScript source text in the current process and returns its result as text.
+public protocol AppleScriptRunning {
+    func run(_ source: String) throws -> String
+}
+
+/// Runs the script with NSAppleScript inside this process, so the system's admin password
+/// dialog is titled with this app's name instead of "osascript". Blocking, with no timeout:
+/// a script ends when the user answers its dialog.
+public final class InProcessAppleScriptRunner: AppleScriptRunning {
+    public init() {}
+
+    public func run(_ source: String) throws -> String {
+        var failure: NSDictionary?
+        // The Swift annotation says non-optional; a failed script returns nil.
+        let result: NSAppleEventDescriptor? = NSAppleScript(source: source)?.executeAndReturnError(&failure)
+        if let failure {
+            let number = (failure[NSAppleScript.errorNumber] as? NSNumber)?.intValue ?? 0
+            if number == -128 { throw ControlError.canceled }
+            let message = ((failure[NSAppleScript.errorMessage] as? String) ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            throw ControlError.message(message.isEmpty ? "The admin script failed (\(number))." : message)
+        }
+        guard let result else { throw ControlError.message("The admin script could not be run.") }
+        return result.stringValue ?? ""
+    }
+}
+
 public func appleScriptString(_ value: String) -> String {
     "\"" + value.replacingOccurrences(of: "\\", with: "\\\\")
         .replacingOccurrences(of: "\"", with: "\\\"")

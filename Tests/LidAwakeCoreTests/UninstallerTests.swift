@@ -57,7 +57,7 @@ final class UninstallerTests: XCTestCase {
         login.failsToDisable = true
         XCTAssertThrowsError(try run(login)) { assertNothingRemoved($0) }
         XCTAssertEqual(stops, 0)
-        XCTAssertTrue(runner.calls.isEmpty) // No admin prompt.
+        XCTAssertTrue(runner.calls.isEmpty && runner.scripts.isEmpty) // No admin prompt.
         XCTAssertTrue(login.enabled)
     }
 

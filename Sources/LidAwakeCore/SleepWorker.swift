@@ -23,7 +23,7 @@ public enum SleepWorker {
                 let directory = FileManager.default.homeDirectoryForCurrentUser
                     .appendingPathComponent("Library/Application Support/LidAwake", isDirectory: true)
                 let runner = ProcessCommandRunner()
-                let session = try SleepSession(settings: PMSet(runner: runner, setup: PrivilegeSetup(runner: runner)),
+                let session = try SleepSession(settings: PMSet(runner: runner, setup: PrivilegeSetup(runner: InProcessAppleScriptRunner())),
                                                journal: FileRecoveryJournal(directory: directory))
                 return serve(session: session, receive: { readLine() }, reply: send)
             }

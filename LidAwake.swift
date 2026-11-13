@@ -27,7 +27,7 @@ private final class AppRuntime {
     let runner = ProcessCommandRunner()
     private(set) var sleep = SleepWorkerClient(executable: Bundle.main.executableURL!)
     lazy var setup = PrivilegeSetup(
-        runner: runner,
+        runner: InProcessAppleScriptRunner(),
         installPrompt: L("LidAwake needs an administrator to install its sleep rule.",
                          "LidAwake нужно разрешение администратора, чтобы установить правило управления сном."),
         uninstallPrompt: L("LidAwake needs an administrator to remove its sleep rule.",

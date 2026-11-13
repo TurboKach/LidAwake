@@ -4,13 +4,13 @@ import Darwin
 public final class PrivilegeSetup {
     public let path: String
     private let uid: uid_t
-    private let runner: CommandRunning
+    private let runner: AppleScriptRunning
     private let legacyPath: String
     private let installPrompt: String?
     private let uninstallPrompt: String?
 
     /// The prompts are the texts of the system's admin password dialogs; nil keeps the system's default.
-    public init(runner: CommandRunning, uid: uid_t = getuid(), directory: String = "/etc/sudoers.d",
+    public init(runner: AppleScriptRunning, uid: uid_t = getuid(), directory: String = "/etc/sudoers.d",
                 installPrompt: String? = nil, uninstallPrompt: String? = nil) {
         self.runner = runner
         self.uid = uid
@@ -41,8 +41,8 @@ public final class PrivilegeSetup {
     }
 
     public func install() throws {
-        _ = try runner.run("/usr/bin/osascript", ["-e",
-            "do shell script \(appleScriptString(installationScript))\(promptClause(installPrompt)) with administrator privileges"], timeout: 120)
+        _ = try runner.run(
+            "do shell script \(appleScriptString(installationScript))\(promptClause(installPrompt)) with administrator privileges")
         guard isInstalled else { throw ControlError.message("Sleep setup could not be verified. Try Repair Sleep Setup.") }
     }
 
@@ -58,9 +58,9 @@ public final class PrivilegeSetup {
     /// otherwise it is left in place and this returns true.
     @discardableResult
     public func uninstall() throws -> Bool {
-        let output = try runner.run("/usr/bin/osascript", ["-e",
-            "do shell script \(appleScriptString(uninstallationScript))\(promptClause(uninstallPrompt)) with administrator privileges"], timeout: 120)
-        let keptLegacy = output.stdout.trimmingCharacters(in: .whitespacesAndNewlines) == "kept-legacy"
+        let output = try runner.run(
+            "do shell script \(appleScriptString(uninstallationScript))\(promptClause(uninstallPrompt)) with administrator privileges")
+        let keptLegacy = output.trimmingCharacters(in: .whitespacesAndNewlines) == "kept-legacy"
         let remaining = remainingRules.filter { !(keptLegacy && $0 == legacyPath) }
         guard remaining.isEmpty else {
             throw ControlError.message("Sleep rules were not removed: " + remaining.joined(separator: ", "))
