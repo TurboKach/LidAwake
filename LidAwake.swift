@@ -315,7 +315,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         entries.append(.separator("about-separator"))
         item("about", L("About LidAwake", "О LidAwake"), #selector(showAbout))
         item("updates", checkingUpdates ? L("Checking for Updates…", "Проверка обновлений…") : L("Check for Updates…", "Проверить обновления…"), #selector(checkForUpdates), enabled: !checkingUpdates)
-        item("github", L("LidAwake on GitHub", "LidAwake на GitHub"), #selector(openGitHub))
         entries.append(.separator("quit-separator"))
         item("quit", L("Quit", "Выйти"), #selector(quitApp), key: "q", enabled: !terminating)
         menuRenderer?.update(entries, target: self)
@@ -435,7 +434,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                           attributes: [.link: ProjectInfo.repository]))
         NSApp.orderFrontStandardAboutPanel(options: [.credits: credits, .applicationVersion: version])
     }
-    @objc private func openGitHub() { NSWorkspace.shared.open(ProjectInfo.repository) }
     @objc private func checkForUpdates() {
         checkingUpdates = true
         updateMenu()
