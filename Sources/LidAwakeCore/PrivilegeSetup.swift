@@ -82,7 +82,16 @@ public final class PrivilegeSetup {
             fi
         fi
         /usr/bin/pmset -a disablesleep 0
-        if [ "$(/usr/bin/pmset -g | /usr/bin/awk '$1 == "SleepDisabled" { print $2 }')" != 0 ]; then
+        sleep_disabled=
+        if status=$(/usr/bin/pmset -g); then
+            if printf '%s\n' "$status" | /usr/bin/grep -q SleepDisabled; then
+                sleep_disabled=$(printf '%s\n' "$status" | /usr/bin/awk '$1 == "SleepDisabled" { print $2 }')
+            else
+                # macOS 27 leaves the line out of pmset; IOPMrootDomain still has it (Yes/No).
+                sleep_disabled=$(/usr/sbin/ioreg -r -c IOPMrootDomain -d 1 | /usr/bin/awk '$2 == "=" && $1 ~ /^"SleepDisabled"$/ { print ($3 == "No") ? 0 : ($3 == "Yes") ? 1 : "" }')
+            fi
+        fi
+        if [ "$sleep_disabled" != 0 ]; then
             echo 'Sleep could not be restored; the sleep rules were kept.' >&2
             exit 1
         fi

@@ -49,7 +49,19 @@ final class SystemAdaptersTests: XCTestCase {
         }
     }
 
-    func testRegistryReadReturnsTheLiveSleepOverrideStateWithoutRoot() {
+    /// Neither source has a value: the read fails, it is never reported as "sleep enabled".
+    func testReadThrowsWhenPmsetOmitsSleepDisabledAndTheRegistryReadFails() {
+        let runner = RecordingRunner()
+        runner.respond = { _ in CommandOutput(stdout: "System-wide power settings:\n sleep 1\n") }
+        let pmset = PMSet(runner: runner, setup: PrivilegeSetup(runner: runner),
+                          registryState: { throw ControlError.message("registry unavailable") })
+        XCTAssertThrowsError(try pmset.read())
+    }
+
+    /// Reads the real registry, so it depends on the host: opt-in only.
+    func testRegistryReadReturnsTheLiveSleepOverrideStateWithoutRoot() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["LIDAWAKE_REAL_REGISTRY_TEST"] == "1",
+                          "Reads this Mac's real registry; set LIDAWAKE_REAL_REGISTRY_TEST=1 to run it.")
         XCTAssertNoThrow(try PMSet.registrySleepDisabled())
     }
 
@@ -291,24 +303,46 @@ final class SystemAdaptersTests: XCTestCase {
 
     /// Runs the uninstall script with a fake pmset whose SleepDisabled starts at `sleepDisabled`.
     /// A sticky fake ignores writes, like a setting something else keeps re-applying.
+    /// `pmsetStatus` replaces what `pmset -g` prints (macOS 27 omits the SleepDisabled line). A fake
+    /// ioreg stands in for `/usr/sbin/ioreg` so no test reads this Mac's real registry; it shows
+    /// the same state, or no SleepDisabled property when `ioregHasValue` is false.
     @discardableResult
-    private func runUninstallScript(_ setup: PrivilegeSetup, sleepDisabled: Int = 0, sticky: Bool = false) throws -> (sleepDisabled: Int, stdout: String) {
+    private func runUninstallScript(_ setup: PrivilegeSetup, sleepDisabled: Int = 0, sticky: Bool = false,
+                                    pmsetStatus: String? = nil, ioregHasValue: Bool = true)
+        throws -> (sleepDisabled: Int, stdout: String, ioregRan: Bool) {
         let state = directory.appendingPathComponent("SleepDisabled")
+        let status = directory.appendingPathComponent("status")
+        let ioregRan = directory.appendingPathComponent("ioreg-ran")
         let pmset = directory.appendingPathComponent("pmset")
+        let ioreg = directory.appendingPathComponent("ioreg")
         try "\(sleepDisabled)".write(to: state, atomically: true, encoding: .utf8)
+        try? FileManager.default.removeItem(at: status)
+        try? FileManager.default.removeItem(at: ioregRan)
+        if let pmsetStatus { try pmsetStatus.write(to: status, atomically: true, encoding: .utf8) }
         try """
         #!/bin/sh
-        if [ "$1" = -g ]; then printf 'System-wide power settings:\\n SleepDisabled\\t%s\\n' "$(cat '\(state.path)')"
+        if [ "$1" = -g ]; then
+            if [ -f '\(status.path)' ]; then cat '\(status.path)'
+            else printf 'System-wide power settings:\\n SleepDisabled\\t%s\\n' "$(cat '\(state.path)')"; fi
         elif [ "$1 $2" = '-a disablesleep' ]; then \(sticky ? ":" : "printf %s \"$3\" > '\(state.path)'")
         else exit 1; fi
         """.write(to: pmset, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: pmset.path)
-        let script = setup.uninstallationScript // Only the pmset calls, not the legacy rule patterns.
+        try """
+        #!/bin/sh
+        : > '\(ioregRan.path)'
+        [ "$*" = '-r -c IOPMrootDomain -d 1' ] || exit 1
+        printf '+-o Root  <class IOPMrootDomain, id 0x1>\\n  {\\n    "IOClass" = "IOPMrootDomain"\\n'
+        \(ioregHasValue ? "if [ \"$(cat '\(state.path)')\" = 1 ]; then v=Yes; else v=No; fi; printf '    \"SleepDisabled\" = %s\\n' \"$v\"" : ":")
+        printf '  }\\n'
+        """.write(to: ioreg, atomically: true, encoding: .utf8)
+        for fake in [pmset, ioreg] { try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: fake.path) }
+        let script = setup.uninstallationScript // Only the pmset and ioreg calls, not the legacy rule patterns.
             .replacingOccurrences(of: "\n/usr/bin/pmset ", with: "\n\(pmset.path) ")
             .replacingOccurrences(of: "$(/usr/bin/pmset ", with: "$(\(pmset.path) ")
-        defer { try? FileManager.default.removeItem(at: pmset) }
+            .replacingOccurrences(of: "$(/usr/sbin/ioreg ", with: "$(\(ioreg.path) ")
+        defer { for fake in [pmset, ioreg] { try? FileManager.default.removeItem(at: fake) } }
         let output = try ProcessCommandRunner().run("/bin/sh", ["-c", script], timeout: 5)
-        return (Int(try String(contentsOf: state, encoding: .utf8))!, output.stdout)
+        return (Int(try String(contentsOf: state, encoding: .utf8))!, output.stdout, FileManager.default.fileExists(atPath: ioregRan.path))
     }
 
     func testUninstallScriptRestoresSleepBeforeRemovingTheRules() throws {
@@ -323,6 +357,45 @@ final class SystemAdaptersTests: XCTestCase {
         try "rule\n".write(toFile: setup.path, atomically: true, encoding: .utf8)
         XCTAssertThrowsError(try runUninstallScript(setup, sleepDisabled: 1, sticky: true))
         XCTAssertEqual(setup.remainingRules, [setup.path])
+    }
+
+    private static let statusWithoutSleepDisabled = "System-wide power settings:\nCurrently in use:\n sleep 1\n"
+
+    /// macOS 27: `pmset -g` has no SleepDisabled line, so the script reads IOPMrootDomain instead.
+    func testUninstallScriptReadsTheRegistryWhenPmsetOmitsSleepDisabled() throws {
+        let setup = PrivilegeSetup(runner: RecordingRunner(), uid: 502, directory: directory.path)
+        try "rule\n".write(toFile: setup.path, atomically: true, encoding: .utf8)
+        let result = try runUninstallScript(setup, sleepDisabled: 1, pmsetStatus: Self.statusWithoutSleepDisabled)
+        XCTAssertEqual(result.sleepDisabled, 0)
+        XCTAssertTrue(result.ioregRan)
+        XCTAssertEqual(setup.remainingRules, [])
+    }
+
+    func testUninstallScriptKeepsTheRulesWhenTheRegistryStillShowsSleepDisabled() throws {
+        let setup = PrivilegeSetup(runner: RecordingRunner(), uid: 502, directory: directory.path)
+        try "rule\n".write(toFile: setup.path, atomically: true, encoding: .utf8)
+        XCTAssertThrowsError(try runUninstallScript(setup, sleepDisabled: 1, sticky: true, pmsetStatus: Self.statusWithoutSleepDisabled))
+        XCTAssertEqual(setup.remainingRules, [setup.path])
+    }
+
+    /// Neither source has a value: the failure path of today, never "sleep enabled".
+    func testUninstallScriptKeepsTheRulesWhenNeitherPmsetNorTheRegistryHasAValue() throws {
+        let setup = PrivilegeSetup(runner: RecordingRunner(), uid: 502, directory: directory.path)
+        try "rule\n".write(toFile: setup.path, atomically: true, encoding: .utf8)
+        XCTAssertThrowsError(try runUninstallScript(setup, pmsetStatus: Self.statusWithoutSleepDisabled, ioregHasValue: false))
+        XCTAssertEqual(setup.remainingRules, [setup.path])
+    }
+
+    func testUninstallScriptDoesNotReadTheRegistryWhenPmsetReportsSleepDisabled() throws {
+        let setup = PrivilegeSetup(runner: RecordingRunner(), uid: 502, directory: directory.path)
+        try "rule\n".write(toFile: setup.path, atomically: true, encoding: .utf8)
+        XCTAssertFalse(try runUninstallScript(setup, sleepDisabled: 1).ioregRan)
+        XCTAssertEqual(setup.remainingRules, [])
+        // A line that is present but unreadable fails without asking the registry.
+        try "rule\n".write(toFile: setup.path, atomically: true, encoding: .utf8)
+        XCTAssertThrowsError(try runUninstallScript(setup, pmsetStatus: " SleepDisabled\tmaybe\n"))
+        XCTAssertEqual(setup.remainingRules, [setup.path])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.appendingPathComponent("ioreg-ran").path))
     }
 
     func testUninstallScriptChecksBothRulesBeforeRemovingEither() throws {
