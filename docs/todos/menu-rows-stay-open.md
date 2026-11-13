@@ -24,3 +24,5 @@ Open decisions for that arc's plan:
 Verification: a second device pass by the owner (hover, keyboard, VoiceOver, Reduce Motion are not covered by unit tests).
 
 Depends: nothing. Effort: medium. Own arc, with its own plan.
+
+Update 2026-11-13: the owner later chose one release with everything. This item is built before the 1.3.0 release, not in a 1.3.1; see `docs/prompts/release-1.3-next-session.md`.

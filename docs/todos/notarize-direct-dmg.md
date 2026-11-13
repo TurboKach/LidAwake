@@ -9,3 +9,5 @@ Context: owner decision 2026-11-13: release 1.3.0 stays ad-hoc signed; notarizat
 Depends: a notary credential (Apple ID app-specific password or an App Store Connect API key) and the Developer ID certificate, both from the owner. Check that the hardened runtime does not break the `sudo -n pmset` helper path or the worker process.
 
 Effort: medium. Own arc, with its own plan.
+
+Update 2026-11-13: the owner later chose one release with everything. This item is built before the 1.3.0 release, not in a 1.3.1; see `docs/prompts/release-1.3-next-session.md`.

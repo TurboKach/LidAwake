@@ -138,5 +138,6 @@ The unplanned commit `6fe6ce3` fixes `scripts/check-build.sh` (Xcode 27's `lipo`
 8. **Device pass (2026-11-13):** all four planned checks passed on the 1.3.0 build.
 9. **"LidAwake on GitHub" row:** removed in 1.3.0 (commit 24bd8ec), because "About LidAwake" already shows the repository link.
 10. **Deferred to 1.3.1 by the owner:** a menu that stays open on condition clicks (`docs/todos/menu-rows-stay-open.md`) and the admin dialog title that says "osascript" (`docs/todos/admin-dialog-title.md`).
+11. **One release with everything (later on 2026-11-13):** the owner held the push and replaced the 1.3.1 follow-up of decisions 4, 6 and 10. The four remaining arcs (menu that stays open, dialog title, String Catalog locales, notarization) are built on `release-1.3` first, and then a single v1.3.0 is released. Nothing is pushed until then. The queue and the ship checklist are in `docs/prompts/release-1.3-next-session.md`.
 
 Assumption: the version is 1.3.0, not 1.2.1, because the release adds a menu item and changes switch behavior.

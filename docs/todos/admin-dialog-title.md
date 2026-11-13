@@ -17,3 +17,5 @@ Facts the plan needs:
 Verification that needs the owner: Sleep Setup and uninstall with a real password, on a real dialog.
 
 Depends: nothing. Effort: medium. Own arc, with its own plan.
+
+Update 2026-11-13: the owner later chose one release with everything. This item is built before the 1.3.0 release, not in a 1.3.1; see `docs/prompts/release-1.3-next-session.md`.

@@ -16,3 +16,5 @@ Open scope points for that arc's plan:
 - A before/after comparison of all en and ru texts, so the move changes no wording.
 
 Depends: nothing. Effort: medium. Own arc, with its own plan; run the build and a render for en and ru before merging.
+
+Update 2026-11-13: the owner later chose one release with everything. This item is built before the 1.3.0 release, not in a 1.3.1; see `docs/prompts/release-1.3-next-session.md`.
