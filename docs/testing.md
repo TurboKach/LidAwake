@@ -25,7 +25,10 @@ admin/Automation approval; they are not part of the automated tests. On macOS 27
 1. Build/open `LidAwake.app`. Choose Not Now, then try enabling keep-awake. Confirm setup
    is offered again and canceling leaves the preference unchanged. Complete setup and
    verify its two exact commands using `sudo -l`. The password dialog must show LidAwake's
-   own text in English and Russian, not "osascript wants to make changes". A legacy installation should preserve
+   own text in English and Russian, with the bold title "LidAwake" (not "osascript" or
+   "osascript wants to make changes"), and must open in front of other windows. Check the
+   same for **Uninstall LidAwake…**: the dialog is titled "LidAwake" and opens in front;
+   canceling it leaves everything in place. A legacy installation should preserve
    the old account while removing every wildcard from its rule.
 2. Enable AC and disable battery. Plug/unplug with the lid open, closed, and the menu
    left open. Check actual `SleepDisabled` state, icon, and menu. Battery must restore

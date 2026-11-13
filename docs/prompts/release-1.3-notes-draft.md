@@ -4,7 +4,7 @@ LidAwake 1.3.0 works on macOS 27, fixes a master switch that could be on while d
 
 - **macOS 27 support.** On macOS 27, `pmset -g` no longer prints the `SleepDisabled` line, so 1.2.0 could never turn keep-awake on ([issue #1](https://github.com/TurboKach/LidAwake/issues/1), reported by KarimElBerniUNIBO). LidAwake now reads the value from the `IOPMrootDomain` registry entry when `pmset -g` leaves it out, in the app and in the uninstall script. A failed read is still an error and is never treated as "sleep enabled". The fix comes from [pull request #3](https://github.com/TurboKach/LidAwake/pull/3) by Fuadeiza; [pull request #2](https://github.com/TurboKach/LidAwake/pull/2) by Matte1404 proposed the same registry fallback. Both contributors reported their fix working on macOS 27.0.1. I could not test macOS 27 myself, so reports from macOS 27 are welcome.
 - **“Uninstall LidAwake…”** in the menu restores sleep, removes the sleep rules after one admin prompt, turns off Launch at Login, deletes the settings, moves the app to the Trash, and quits.
-- **Clearer admin dialogs.** The password dialogs for Sleep Setup and for uninstall now say in LidAwake's own words, in English or Russian, what the password is for, instead of “osascript wants to make changes”. The dialog is still titled “osascript”; that changes in a later release.
+- **Clearer admin dialogs.** The password dialogs for Sleep Setup and for uninstall now say in LidAwake's own words, in English or Russian, what the password is for, instead of “osascript wants to make changes”. The dialog is titled “LidAwake”.
 
 ### Changed behavior
 
