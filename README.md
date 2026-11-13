@@ -6,7 +6,7 @@ other long-running terminal jobs keep running with the laptop shut. No external 
 
 A focused, closed-lid alternative to **Amphetamine** / **Caffeine**.
 
-<img src="docs/menu.png" width="399" alt="The LidAwake menu: the LidAwake switch is on with the status line Staying awake · Battery, below it Connected to Power and On Battery are both checked under Keep awake when, followed by Turn Off External Display on Lid Close (checked), Repair Sleep Setup…, Uninstall LidAwake…, Launch at Login (checked), About LidAwake, Check for Updates… and Quit.">
+<img src="docs/menu.png" width="399" alt="The LidAwake menu: the LidAwake switch is on with the status line Staying awake · Battery, below it Connected to Power and On Battery are both switched on under Keep awake when, followed by Turn Off External Display on Lid Close (checked), Repair Sleep Setup…, Uninstall LidAwake…, Launch at Login (checked), About LidAwake, Check for Updates… and Quit.">
 
 ## Why
 
@@ -27,14 +27,15 @@ A focused, closed-lid alternative to **Amphetamine** / **Caffeine**.
 - Readable live status below the master switch, e.g. *“Sleep enabled · Battery”*.
 
 Use the **LidAwake** switch at the top of the menu as the master control (`⌘E` while the
-menu is open), then choose **Connected to Power** and/or
-**On Battery** under **Keep awake when:**. With only AC selected, unplugging allows
-sleep and reconnecting keeps the Mac awake again. Turning the master off restores
-sleep, stops LidAwake's display blanking, and dims the dependent controls while keeping
-their selections. Setup, login, and update actions remain available. The master is on only
-while at least one condition is checked: unchecking the last one turns it off, and turning
-it on with none checked checks both. A fresh install starts with the master off and both
-conditions checked. Existing installs retain their saved power-source choices, and a setup
+menu is open), then switch **Connected to Power** and/or
+**On Battery** on under **Keep awake when:**. These two rows are switches, and the menu
+stays open when you change them; click outside it to close it. With only AC switched on,
+unplugging allows sleep and reconnecting keeps the Mac awake again. Turning the master off
+restores sleep, stops LidAwake's display blanking, and dims the dependent controls while
+keeping their selections. Setup, login, and update actions remain available. The master is
+on only while at least one condition is on: switching off the last one turns the master off,
+and turning the master on with none on switches both on. A fresh install starts with the
+master off and both conditions on. Existing installs retain their saved power-source choices, and a setup
 that keeps the Mac awake today stays that way after the upgrade.
 
 ## How it works

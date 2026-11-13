@@ -8,8 +8,9 @@ LidAwake 1.3.0 works on macOS 27, fixes a master switch that could be on while d
 
 ### Changed behavior
 
-- The LidAwake switch is on only while at least one **Keep awake when** condition is checked. Unchecking the last condition turns the switch off, and turning the switch on with none checked checks both.
-- A fresh install starts with the switch off and both conditions checked. A setup that keeps your Mac awake today is not changed by the upgrade.
+- **Connected to Power** and **On Battery** are now switches, and changing them no longer closes the menu; click outside it to close it.
+- The LidAwake switch is on only while at least one **Keep awake when** condition is on. Switching off the last condition turns the switch off, and turning the switch on with none on switches both on.
+- A fresh install starts with the switch off and both conditions on. A setup that keeps your Mac awake today is not changed by the upgrade.
 - The “LidAwake on GitHub” menu row is gone; **About LidAwake** already shows the repository link.
 
 ### Reliability improvements

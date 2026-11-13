@@ -32,13 +32,17 @@ admin/Automation approval; they are not part of the automated tests. On macOS 27
    sleep; a permission failure must be visible. Check both Apple Silicon and Intel when
    hardware is available, including the oldest supported macOS version.
    Turn the **LidAwake** switch off while awake: sleep must be restored and the AC, battery,
-   and external-display controls must dim without losing their checkmarks. Keep the
+   and external-display controls must dim, the two condition switches keeping their
+   positions and the external-display row its checkmark. Keep the
    menu open through several polls, switch power sources, and relaunch: the master
    must stay off. Enable it on battery: AC-only settings must still allow sleep until
    plugged in. Setup, login, and update actions must remain usable while disabled.
    Check the native switch with mouse, VoiceOver, and `⌘E` while the menu is open,
-   including canceling setup and a failed change. Verify its appearance in light and
-   dark mode and that neither the switch nor the menu blinks during background polls.
+   including canceling setup and a failed change. Check the **Connected to Power** and
+   **On Battery** switches with mouse and VoiceOver: a click on the switch or the title
+   toggles once and the menu stays open until you click outside it. Verify the appearance
+   of all three switches in light and dark mode and that neither the switches nor the menu
+   blink during background polls.
 3. Close/open the lid with no external display, with an external display, and with the
    external-display toggle in both states. Confirm internal blanking and external-display
    behavior. Verify hotplugging a display and unlocking the Mac afterward.
@@ -60,19 +64,19 @@ admin/Automation approval; they are not part of the automated tests. On macOS 27
    release page only after confirmation. There must be no update request at startup.
 9. Switch rule, with Sleep Setup complete, on a test machine after quitting LidAwake and
    running `defaults delete local.lidawake`: the first launch must show the switch off and
-   both **Keep awake when** conditions checked. Turn the switch on: it must stay on. Uncheck one
-   condition: the switch stays on. Uncheck the last: the switch turns off, sleep is restored,
-   and both boxes are unchecked and dimmed, also after a relaunch. Turn the switch on again:
-   both conditions must be checked. With one condition checked, turn the switch off and on:
-   the conditions must not change. Unchecking the last condition for the power source that
+   both **Keep awake when** conditions on. Turn the switch on: it must stay on. Switch one
+   condition off: the switch stays on. Switch off the last: the switch turns off, sleep is restored,
+   and both condition switches are off and dimmed, also after a relaunch. Turn the switch on again:
+   both conditions must be on. With one condition on, turn the switch off and on:
+   the conditions must not change. Switching off the last condition for the power source that
    is not in use must turn the switch off without changing `SleepDisabled`. To check an
    upgrade, quit LidAwake, run `defaults delete local.lidawake`, then
    `defaults write local.lidawake awakeOnAC -bool true` and
    `defaults write local.lidawake awakeOnBattery -bool false` (1.2.0 saves nothing
    until the switch or a condition is first changed): the first launch must show the switch
-   on with AC only checked. Finally quit, set `awakeOnAC` and `awakeOnBattery` to `-bool false`
+   on with AC only on. Finally quit, set `awakeOnAC` and `awakeOnBattery` to `-bool false`
    and `lidAwakeEnabled` to `-bool true`: the next launch must show the switch off with both
-   conditions checked.
+   conditions on.
 
 After testing, quit the app and verify sleep is enabled. If both processes were killed
 and recovery cannot run, use `sudo pmset -a disablesleep 0` to restore sleep manually.

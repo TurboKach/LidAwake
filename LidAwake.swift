@@ -286,10 +286,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let controlsEnabled = pendingUserOperations == 0 && !gate.locksMenuActions
         let awakeControlsEnabled = controlsEnabled && state.policy.isEnabled
         func item(_ id: String, _ title: String, _ action: Selector? = nil, key: String = "",
-                  checked: Bool? = false, enabled: Bool = true, indent: Int = 0, symbol: String? = nil) {
+                  checked: Bool? = false, enabled: Bool = true, indent: Int = 0, symbol: String? = nil,
+                  style: MenuEntry.Style = .standard) {
             let checkState: NSControl.StateValue = checked.map { $0 ? .on : .off } ?? .mixed
             entries.append(MenuEntry(id: id, title: title, action: action, keyEquivalent: key,
-                                     state: checkState, enabled: enabled, indentationLevel: indent, symbol: symbol))
+                                     state: checkState, enabled: enabled, indentationLevel: indent, style: style, symbol: symbol))
         }
         let source = state.onAC ? L("AC power", "От сети") : L("Battery", "От батареи")
         let status = state.awake.map { $0 ? L("Staying awake", "Не засыпает") : L("Sleep enabled", "Сон разрешён") }
@@ -303,8 +304,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         entries.append(.separator("power-separator"))
         item("power-heading", L("Keep awake when:", "Не засыпать:"))
-        item("ac", L("Connected to Power", "При питании от сети"), #selector(toggleAC), checked: state.policy.onAC, enabled: awakeControlsEnabled, indent: 1, symbol: "powerplug.fill")
-        item("battery", L("On Battery", "При питании от батареи"), #selector(toggleBattery), checked: state.policy.onBattery, enabled: awakeControlsEnabled, indent: 1, symbol: "battery.100")
+        item("ac", L("Connected to Power", "При питании от сети"), #selector(toggleAC), checked: state.policy.onAC, enabled: awakeControlsEnabled, indent: 1, symbol: "powerplug.fill", style: .compactToggle)
+        item("battery", L("On Battery", "При питании от батареи"), #selector(toggleBattery), checked: state.policy.onBattery, enabled: awakeControlsEnabled, indent: 1, symbol: "battery.100", style: .compactToggle)
         entries.append(.separator("display-separator"))
         item("external", L("Turn Off External Display on Lid Close", "Выключать внешний дисплей при закрытии крышки"), #selector(toggleExternal), checked: offExternal, enabled: awakeControlsEnabled)
         entries.append(.separator("setup-separator"))
