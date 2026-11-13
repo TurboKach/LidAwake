@@ -119,3 +119,15 @@ Plan review: one `plan-reviewer` pass, 2 blocking findings (the source of the 11
 - A disabled row dims its icon with its title.
 - The two rows get no tooltip.
 - The device pass comes before the whole-range review, so the new screenshot is inside the reviewed range.
+
+## Addendum (2026-11-13): findings before and at the device pass
+
+1. **Truncated titles (Step 3 render, fixed in `27430a6`).** The compact title was framed to the bare string width; the text field's cell needs 4 pt more and draws 2 pt inside its frame. A private cell for the compact title removes that inset.
+2. **The menu flashes on a small-switch toggle (owner, device pass on `27430a6`: "it blinks when i toggle small ones"; asked what blinks: "The whole menu flashes").** Cause, from a code trace (nobody here can see the screen): `perform(showFailure: true)` raises `pendingUserOperations` and calls `updateUI()` at once (`LidAwake.swift:191-194`); `controlsEnabled` (`:286`) then disables seven rows (master, `ac`, `battery`, `external`, `setup`, `uninstall-app`, `login`) until the completion enables them again. For a condition of the inactive power source no sleep write happens, so the pair lands within a frame or two. Before this arc the menu closed on the click and hid it. Excluded by the trace: frame or width writes on a toggle, a menu relayout call, a knob that jumps back.
+   **Decision (owner): never dim for a running operation.** Not chosen: dim only when the operation lasts longer than about 0.3 s; leave as is. Accepted cost: a rare slow or stuck operation shows no busy look until it ends or reports an error.
+   Invariants for the fix:
+   - A running user operation changes no row's look. Rows dim only for states: master off, `gate.locksMenuActions`, `terminating`, `checkingUpdates`.
+   - While an operation runs, a click or key equivalent on a row that starts or needs an idle operation is ignored: no second operation, no alert.
+   - A switch row keeps the requested position until the operation ends, then shows the item's state (the new state on success, the old one on failure or a rejected click). The in-flight signal is no longer `item.isEnabled`. This replaces mechanism 4 for both layouts.
+   - Stable menu: identical polls replace no view and post no `NSMenu` notification.
+   The owner checks the menu again before the whole-range review.
