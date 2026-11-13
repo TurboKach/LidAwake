@@ -3,8 +3,9 @@ import IOKit.ps
 import CoreGraphics
 import LidAwakeCore
 
-private func L(_ en: String, _ ru: String) -> String {
-    Bundle.preferredLocalizations(from: ["en", "ru"], forPreferences: Locale.preferredLanguages).first == "ru" ? ru : en
+private func L(_ key: String, _ args: CVarArg...) -> String {
+    let text = Bundle.main.localizedString(forKey: key, value: nil, table: nil)
+    return args.isEmpty ? text : String(format: text, arguments: args)
 }
 
 private func onACPower() -> Bool {
@@ -28,10 +29,8 @@ private final class AppRuntime {
     private(set) var sleep = SleepWorkerClient(executable: Bundle.main.executableURL!)
     lazy var setup = PrivilegeSetup(
         runner: InProcessAppleScriptRunner(),
-        installPrompt: L("LidAwake needs an administrator to install its sleep rule.",
-                         "LidAwake нужно разрешение администратора, чтобы установить правило управления сном."),
-        uninstallPrompt: L("LidAwake needs an administrator to remove its sleep rule.",
-                           "LidAwake нужно разрешение администратора, чтобы удалить правило управления сном."))
+        installPrompt: L("LidAwake needs an administrator to install its sleep rule."),
+        uninstallPrompt: L("LidAwake needs an administrator to remove its sleep rule."))
     lazy var login = LoginItems(runner: runner, bundleURL: Bundle.main.bundleURL)
     private(set) lazy var controller = makeController(
         policy: SleepPolicy(isEnabled: UserDefaults.standard.bool(forKey: "lidAwakeEnabled"),
@@ -66,16 +65,13 @@ private final class AppRuntime {
             })
         } catch Uninstaller.Failure.nothingRemoved(let cause, let loginItemOff) {
             if cause as? ControlError == .canceled && !loginItemOff { throw cause }
-            let login = loginItemOff ? L(" Nothing else was removed, but Launch at Login is now off; turn it back on from the menu.",
-                                         " Больше ничего не удалено, но запуск при входе теперь выключен; включите его снова в меню.")
-                                     : L(" Nothing was removed.", " Ничего не было удалено.")
-            throw ControlError.message(L("LidAwake was not uninstalled.", "LidAwake не удалён.") + login + "\n\n" + cause.localizedDescription)
+            let login = loginItemOff ? L(" Nothing else was removed, but Launch at Login is now off; turn it back on from the menu.")
+                                     : L(" Nothing was removed.")
+            throw ControlError.message(L("LidAwake was not uninstalled.") + login + "\n\n" + cause.localizedDescription)
         } catch Uninstaller.Failure.incomplete(let remaining, let cause) {
-            throw ControlError.message(L("LidAwake was only partly uninstalled. These items remain:\n",
-                                         "LidAwake удалён не полностью. Остались:\n")
+            throw ControlError.message(L("LidAwake was only partly uninstalled. These items remain:\n")
                 + remaining.joined(separator: "\n")
-                + L("\n\nRemove them manually (for files in /etc/sudoers.d, run “sudo rm <path>” in Terminal), or fix the cause and choose Uninstall LidAwake… again.\n\n",
-                    "\n\nУдалите их вручную (для файлов в /etc/sudoers.d выполните в Терминале «sudo rm <путь>») или устраните причину и снова выберите «Удалить LidAwake…».\n\n")
+                + L("\n\nRemove them manually (for files in /etc/sudoers.d, run “sudo rm <path>” in Terminal), or fix the cause and choose Uninstall LidAwake… again.\n\n")
                 + cause.localizedDescription)
         }
     }
@@ -164,11 +160,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             DispatchQueue.main.async {
                 if let failure = failure {
                     let alert = NSAlert()
-                    alert.messageText = L("Sleep could not be restored", "Не удалось восстановить сон")
-                    alert.informativeText = L("The Mac may remain awake. Stay open to repair Sleep Setup and try again.\n\n",
-                                             "Mac может не засыпать. Оставьте приложение открытым, исправьте настройку сна и повторите попытку.\n\n") + failure.localizedDescription
-                    alert.addButton(withTitle: L("Stay Open", "Остаться"))
-                    alert.addButton(withTitle: L("Quit Anyway", "Всё равно выйти"))
+                    alert.messageText = L("Sleep could not be restored")
+                    alert.informativeText = L("The Mac may remain awake. Stay open to repair Sleep Setup and try again.\n\n") + failure.localizedDescription
+                    alert.addButton(withTitle: L("Stay Open"))
+                    alert.addButton(withTitle: L("Quit Anyway"))
                     let quit = alert.runModal() == .alertSecondButtonReturn
                     if !quit { self.gate.cancelQuit() }
                     self.busy = quit
@@ -264,8 +259,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func updateUI() {
         let unavailable = state.awake == nil || state.error != nil
         let symbol = sleepSymbol
-        let description = state.awake.map { $0 ? L("Staying awake", "Не засыпает") : L("Sleep enabled", "Сон разрешён") }
-            ?? L("Sleep status unavailable", "Состояние сна недоступно")
+        let description = state.awake.map { $0 ? L("Staying awake") : L("Sleep enabled") }
+            ?? L("Sleep status unavailable")
         if let button = statusItem.button {
             if displayedSymbol != symbol || displayedIconDescription != description {
                 let image = NSImage(systemSymbolName: symbol, accessibilityDescription: description)
@@ -294,32 +289,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             entries.append(MenuEntry(id: id, title: title, action: action, keyEquivalent: key,
                                      state: checkState, enabled: enabled, indentationLevel: indent, style: style, symbol: symbol))
         }
-        let source = state.onAC ? L("AC power", "От сети") : L("Battery", "От батареи")
-        let status = state.awake.map { $0 ? L("Staying awake", "Не засыпает") : L("Sleep enabled", "Сон разрешён") }
-            ?? L("Sleep status unavailable", "Состояние сна недоступно")
+        let source = state.onAC ? L("AC power") : L("Battery")
+        let status = state.awake.map { $0 ? L("Staying awake") : L("Sleep enabled") }
+            ?? L("Sleep status unavailable")
         entries.append(MenuEntry(id: "enabled", title: "LidAwake", action: #selector(toggleEnabled),
                                  keyEquivalent: "e", state: state.policy.isEnabled ? .on : .off,
                                  enabled: controlsEnabled, style: .toggle,
                                  subtitle: "\(status) · \(source)", symbol: sleepSymbol))
         if state.error != nil {
-            item("error", L("Sleep setting needs attention…", "Проверьте настройку сна…"), #selector(showSleepError))
+            item("error", L("Sleep setting needs attention…"), #selector(showSleepError))
         }
         entries.append(.separator("power-separator"))
-        item("power-heading", L("Keep awake when:", "Не засыпать:"))
-        item("ac", L("Connected to Power", "При питании от сети"), #selector(toggleAC), checked: state.policy.onAC, enabled: awakeControlsEnabled, indent: 1, symbol: "powerplug.fill", style: .compactToggle)
-        item("battery", L("On Battery", "При питании от батареи"), #selector(toggleBattery), checked: state.policy.onBattery, enabled: awakeControlsEnabled, indent: 1, symbol: "battery.100", style: .compactToggle)
+        item("power-heading", L("Keep awake when:"))
+        item("ac", L("Connected to Power"), #selector(toggleAC), checked: state.policy.onAC, enabled: awakeControlsEnabled, indent: 1, symbol: "powerplug.fill", style: .compactToggle)
+        item("battery", L("On Battery"), #selector(toggleBattery), checked: state.policy.onBattery, enabled: awakeControlsEnabled, indent: 1, symbol: "battery.100", style: .compactToggle)
         entries.append(.separator("display-separator"))
-        item("external", L("Turn Off External Display on Lid Close", "Выключать внешний дисплей при закрытии крышки"), #selector(toggleExternal), checked: offExternal, enabled: awakeControlsEnabled)
+        item("external", L("Turn Off External Display on Lid Close"), #selector(toggleExternal), checked: offExternal, enabled: awakeControlsEnabled)
         entries.append(.separator("setup-separator"))
-        item("setup", state.setupReady ? L("Repair Sleep Setup…", "Исправить настройку сна…") : L("Enable Automatic Sleep Control…", "Включить автоматическое управление сном…"), #selector(setupSleep), enabled: controlsEnabled)
-        item("uninstall-app", L("Uninstall LidAwake…", "Удалить LidAwake…"), #selector(uninstallApp), enabled: controlsEnabled)
+        item("setup", state.setupReady ? L("Repair Sleep Setup…") : L("Enable Automatic Sleep Control…"), #selector(setupSleep), enabled: controlsEnabled)
+        item("uninstall-app", L("Uninstall LidAwake…"), #selector(uninstallApp), enabled: controlsEnabled)
         entries.append(.separator("login-separator"))
-        item("login", L("Launch at Login", "Запускать при входе"), #selector(toggleLogin), key: "l", checked: state.loginEnabled, enabled: controlsEnabled)
+        item("login", L("Launch at Login"), #selector(toggleLogin), key: "l", checked: state.loginEnabled, enabled: controlsEnabled)
         entries.append(.separator("about-separator"))
-        item("about", L("About LidAwake", "О LidAwake"), #selector(showAbout))
-        item("updates", checkingUpdates ? L("Checking for Updates…", "Проверка обновлений…") : L("Check for Updates…", "Проверить обновления…"), #selector(checkForUpdates), enabled: !checkingUpdates)
+        item("about", L("About LidAwake"), #selector(showAbout))
+        item("updates", checkingUpdates ? L("Checking for Updates…") : L("Check for Updates…"), #selector(checkForUpdates), enabled: !checkingUpdates)
         entries.append(.separator("quit-separator"))
-        item("quit", L("Quit", "Выйти"), #selector(quitApp), key: "q", enabled: !terminating)
+        item("quit", L("Quit"), #selector(quitApp), key: "q", enabled: !terminating)
         menuRenderer?.update(entries, target: self, operationInFlight: pendingUserOperations > 0)
     }
 
@@ -358,12 +353,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func promptSetup(afterSuccess: (() -> Void)? = nil) {
         statusItem.menu?.cancelTracking()
         let alert = NSAlert()
-        alert.messageText = L("Let LidAwake manage sleep automatically?", "Разрешить LidAwake управлять сном автоматически?")
+        alert.messageText = L("Let LidAwake manage sleep automatically?")
         alert.informativeText = L(
-            "One admin approval lets LidAwake switch sleep on AC and battery and restore sleep when you quit or the menu app crashes. Only the two sleep-toggle commands are allowed without a password. Existing LidAwake rules will be narrowed to those commands.",
-            "Однократное подтверждение администратора позволит переключать сон при смене питания и восстанавливать его при выходе или сбое приложения. Без пароля разрешены только две команды переключения сна. Старые правила LidAwake будут ограничены этими командами.")
-        alert.addButton(withTitle: L("Enable", "Включить"))
-        alert.addButton(withTitle: L("Not Now", "Не сейчас"))
+            "One admin approval lets LidAwake switch sleep on AC and battery and restore sleep when you quit or the menu app crashes. Only the two sleep-toggle commands are allowed without a password. Existing LidAwake rules will be narrowed to those commands.")
+        alert.addButton(withTitle: L("Enable"))
+        alert.addButton(withTitle: L("Not Now"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         perform({ runtime in
             try runtime.setup.install()
@@ -374,12 +368,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard pendingUserOperations == 0 else { return }
         statusItem.menu?.cancelTracking()
         let alert = NSAlert()
-        alert.messageText = L("Uninstall LidAwake?", "Удалить LidAwake?")
+        alert.messageText = L("Uninstall LidAwake?")
         alert.informativeText = L(
-            "LidAwake restores normal sleep, then removes:\n• its sleep rules /etc/sudoers.d/lidawake-\(getuid()) and, if it names this account, /etc/sudoers.d/lidawake (macOS asks for an administrator password)\n• its login item\n• its settings and ~/Library/Application Support/LidAwake\n• the app itself, moved to the Trash\n\nThen LidAwake quits.",
-            "LidAwake восстановит обычный сон, затем удалит:\n• свои правила сна /etc/sudoers.d/lidawake-\(getuid()) и, если оно указывает эту учётную запись, /etc/sudoers.d/lidawake (macOS запросит пароль администратора)\n• свой объект входа\n• свои настройки и ~/Library/Application Support/LidAwake\n• само приложение — оно будет перемещено в Корзину\n\nЗатем LidAwake завершит работу.")
-        alert.addButton(withTitle: L("Uninstall", "Удалить"))
-        alert.addButton(withTitle: L("Cancel", "Отмена"))
+            "LidAwake restores normal sleep, then removes:\n• its sleep rules /etc/sudoers.d/lidawake-%@ and, if it names this account, /etc/sudoers.d/lidawake (macOS asks for an administrator password)\n• its login item\n• its settings and ~/Library/Application Support/LidAwake\n• the app itself, moved to the Trash\n\nThen LidAwake quits.", "\(getuid())")
+        alert.addButton(withTitle: L("Uninstall"))
+        alert.addButton(withTitle: L("Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn, gate.beginUninstall() else { return }
         var keptLegacyRule = false
         perform({ runtime in
@@ -392,7 +385,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }, showFailure: true, completion: { [weak self] error in
             guard let self = self else { return }
             if error as? ControlError == .canceled {
-                self.showError(L("Uninstall was canceled. Nothing was removed.", "Удаление отменено. Ничего не было удалено."))
+                self.showError(L("Uninstall was canceled. Nothing was removed."))
             }
             guard error == nil else {
                 // Sleep control was handed back to a new worker; a quit requested meanwhile runs now.
@@ -400,14 +393,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 return
             }
             if keptLegacyRule {
-                self.showError(L("LidAwake was uninstalled. Left /etc/sudoers.d/lidawake in place because it belongs to another account or has content LidAwake does not recognize.",
-                                 "LidAwake удалён. Файл /etc/sudoers.d/lidawake оставлен на месте: он принадлежит другой учётной записи или содержит то, что LidAwake не распознаёт."))
+                self.showError(L("LidAwake was uninstalled. Left /etc/sudoers.d/lidawake in place because it belongs to another account or has content LidAwake does not recognize."))
             }
             NSWorkspace.shared.recycle([Bundle.main.bundleURL]) { _, error in
                 DispatchQueue.main.async {
                     if let error = error {
-                        self.showError(L("LidAwake was uninstalled, but the app could not be moved to the Trash. Move it to the Trash yourself.\n\n",
-                                         "LidAwake удалён, но приложение не удалось переместить в Корзину. Переместите его в Корзину вручную.\n\n") + error.localizedDescription)
+                        self.showError(L("LidAwake was uninstalled, but the app could not be moved to the Trash. Move it to the Trash yourself.\n\n") + error.localizedDescription)
                     }
                     // Sleep is already restored and the worker stopped by the uninstall.
                     if self.gate.endUninstall(succeeded: true) { NSApp.reply(toApplicationShouldTerminate: true) } else { NSApp.terminate(nil) }
@@ -427,17 +418,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }, showFailure: true, affectsSleep: false)
     }
-    @objc private func showSleepError() { showError(state.error ?? L("Unknown error", "Неизвестная ошибка")) }
+    @objc private func showSleepError() { showError(state.error ?? L("Unknown error")) }
     private func showError(_ message: String) {
         statusItem.menu?.cancelTracking()
         let alert = NSAlert()
-        alert.messageText = L("LidAwake needs attention", "LidAwake требует внимания")
+        alert.messageText = L("LidAwake needs attention")
         alert.informativeText = message
         alert.runModal()
     }
     @objc private func showAbout() {
         NSApp.activate(ignoringOtherApps: true)
-        let credits = NSMutableAttributedString(string: L("Developed by ", "Разработчик: ") + ProjectInfo.developer + "\n")
+        let credits = NSMutableAttributedString(string: L("Developed by ") + ProjectInfo.developer + "\n")
         credits.append(NSAttributedString(string: ProjectInfo.repository.absoluteString,
                                           attributes: [.link: ProjectInfo.repository]))
         NSApp.orderFrontStandardAboutPanel(options: [.credits: credits, .applicationVersion: version])
@@ -452,19 +443,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let alert = NSAlert()
                 switch result {
                 case .available(let latest, let url):
-                    alert.messageText = L("LidAwake \(latest) is available", "Доступен LidAwake \(latest)")
-                    alert.informativeText = L("You’re running \(version). Open the release page to download the update.",
-                                             "У вас версия \(version). Откройте страницу релиза, чтобы скачать обновление.")
-                    alert.addButton(withTitle: L("Open Release", "Открыть релиз"))
-                    alert.addButton(withTitle: L("Later", "Позже"))
+                    alert.messageText = L("LidAwake %@ is available", latest)
+                    alert.informativeText = L("You’re running %@. Open the release page to download the update.", version)
+                    alert.addButton(withTitle: L("Open Release"))
+                    alert.addButton(withTitle: L("Later"))
                     if alert.runModal() == .alertFirstButtonReturn { NSWorkspace.shared.open(url) }
                 case .current:
-                    alert.messageText = L("LidAwake is up to date", "LidAwake обновлён")
-                    alert.informativeText = L("You’re running version \(version).", "У вас версия \(version).")
+                    alert.messageText = L("LidAwake is up to date")
+                    alert.informativeText = L("You’re running version %@.", version)
                     alert.runModal()
                 case .noReleases:
-                    alert.messageText = L("No releases available yet", "Релизов пока нет")
-                    alert.informativeText = L("There are no public releases on GitHub yet.", "На GitHub пока нет публичных релизов.")
+                    alert.messageText = L("No releases available yet")
+                    alert.informativeText = L("There are no public releases on GitHub yet.")
                     alert.runModal()
                 }
             } catch { showError(error.localizedDescription) }
