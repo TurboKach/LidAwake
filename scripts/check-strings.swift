@@ -127,6 +127,41 @@ func startsString(_ i: Int) -> Bool {
     return j < src.count && src[j] == "\""
 }
 
+// Returns the index after the block comment that starts at `start`; Swift block comments nest.
+func skipBlockComment(_ start: Int) -> Int {
+    var i = start + 2
+    var depth = 1
+    while i < src.count, depth > 0 {
+        if startsWith("/*", at: i) {
+            depth += 1
+            i += 2
+        } else if startsWith("*/", at: i) {
+            depth -= 1
+            i += 2
+        } else {
+            i += 1
+        }
+    }
+    return i
+}
+
+// Returns the first index at or after `from` that is not whitespace or a comment.
+func skipTrivia(_ from: Int) -> Int {
+    var i = from
+    while i < src.count {
+        if isWhitespace(src[i]) {
+            i += 1
+        } else if startsWith("//", at: i) {
+            while i < src.count, src[i] != "\n" { i += 1 }
+        } else if startsWith("/*", at: i) {
+            i = skipBlockComment(i)
+        } else {
+            break
+        }
+    }
+    return i
+}
+
 // Returns the index after the string literal that starts at `start`.
 func skipString(_ start: Int) -> Int {
     var i = start
@@ -152,13 +187,16 @@ func skipString(_ start: Int) -> Int {
     return i
 }
 
-// Scans code from `from`, skipping comments and strings and recording every L( call.
-// With `nested`, stops at the unmatched ")" and returns its index and the number of
-// top-level commas that are followed by something other than ")".
-func scan(_ from: Int, nested: Bool) -> (end: Int, commas: Int) {
+// Scans code from `from`, skipping comments and strings and recording every L call.
+// With `nested`, stops at the unmatched ")" and returns its index, the number of
+// top-level commas that are followed by something other than ")", and whether a "<" or
+// ">" stands outside any bracket (a generic type there would hide commas, so L calls
+// reject it; "->" is not counted).
+func scan(_ from: Int, nested: Bool) -> (end: Int, commas: Int, angle: Bool) {
     var i = from
     var depth = 0
     var commas = 0
+    var angle = false
     while i < src.count {
         let c = src[i]
         if startsWith("//", at: i) {
@@ -166,51 +204,57 @@ func scan(_ from: Int, nested: Bool) -> (end: Int, commas: Int) {
             continue
         }
         if startsWith("/*", at: i) {
-            i += 2
-            while i < src.count, !startsWith("*/", at: i) { i += 1 }
-            i += 2
+            i = skipBlockComment(i)
             continue
         }
         if startsString(i) {
             i = skipString(i)
             continue
         }
-        if c == "L", i + 1 < src.count, src[i + 1] == "(", i == 0 || !isIdentifier(src[i - 1]) {
-            i = call(at: i)
+        if c == "L", i == 0 || !isIdentifier(src[i - 1]), i + 1 >= src.count || !isIdentifier(src[i + 1]) {
+            let paren = skipTrivia(i + 1)
+            if paren < src.count, src[paren] == "(" {
+                i = call(at: i, paren: paren)
+            } else {
+                fail(sourcePath, line(i), "L is used other than as a direct call L(\"…\")")
+                i += 1
+            }
             continue
         }
         switch c {
         case "(", "[", "{":
             depth += 1
         case ")", "]", "}":
-            if depth == 0, nested, c == ")" { return (i, commas) }
+            if depth == 0, nested, c == ")" { return (i, commas, angle) }
             depth -= 1
         case ",":
             if depth == 0, nested, nextNonWhitespace(i + 1) < src.count, src[nextNonWhitespace(i + 1)] != ")" { commas += 1 }
+        case "<", ">":
+            if depth == 0, nested, !(c == ">" && i > 0 && src[i - 1] == "-") { angle = true }
         default:
             break
         }
         i += 1
     }
-    return (i, commas)
+    return (i, commas, angle)
 }
 
-// Handles the L( at `i`; returns where scanning continues.
-func call(at i: Int) -> Int {
+// Handles the call of L at `i`, whose "(" is at `paren`; returns where scanning continues.
+func call(at i: Int, paren: Int) -> Int {
     // The definition "func L(" is not a call.
     var back = i - 1
-    while back >= 0, src[back] == " " { back -= 1 }
-    if back >= 3, String(String.UnicodeScalarView(src[back - 3...back])) == "func" { return i + 2 }
+    while back >= 0, isWhitespace(src[back]) { back -= 1 }
+    if back >= 3, String(String.UnicodeScalarView(src[back - 3...back])) == "func" { return paren + 1 }
 
     callCount += 1
     let ln = line(i)
     func reject(_ message: String) -> Int {
         fail(sourcePath, ln, message)
         calls.append(Call(line: ln, key: nil, arguments: 0))
-        return i + 2
+        return paren + 1
     }
 
-    var j = i + 2
+    var j = paren + 1
     var newlines = 0
     while j < src.count, isWhitespace(src[j]) {
         if src[j] == "\n" { newlines += 1 }
@@ -248,6 +292,7 @@ func call(at i: Int) -> Int {
     if src[j] == "," {
         let rest = scan(j + 1, nested: true)
         end = rest.end + 1
+        if rest.angle { return reject("an argument of L( has a < or > outside brackets (a generic type would hide commas); put it in a local constant") }
         if nextNonWhitespace(j + 1) < rest.end { arguments = 1 + rest.commas }
     } else if src[j] != ")" {
         return reject("the key literal must be the whole first argument")

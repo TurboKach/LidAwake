@@ -102,6 +102,9 @@ swift test                # regression tests with simulated power settings
 ./scripts/check-build.sh universal  # verify the universal bundle and macOS 12 target
 ```
 
+Building the app needs full Xcode, not only the Command Line Tools, because the build
+compiles the String Catalog with `xcrun xcstringstool`.
+
 Both build paths use `Package.swift` for the macOS 12 deployment target and `Info.plist`
 for bundle metadata. Before publishing a new release, increment `CFBundleShortVersionString`
 and `CFBundleVersion` in `Info.plist`; use a corresponding GitHub release tag such as
