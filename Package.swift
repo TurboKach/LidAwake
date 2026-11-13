@@ -9,7 +9,7 @@ let package = Package(
     targets: [
         .target(name: "LidAwakeCore"),
         .executableTarget(name: "LidAwake", dependencies: ["LidAwakeCore"], path: ".",
-            exclude: ["Sources", "Tests", "scripts", "docs", "README.md", "TODO.md",
+            exclude: ["Sources", "Tests", "scripts", "docs", "Localization", "README.md", "TODO.md",
                       "AppIcon.icns", "build.sh", "release.sh", "make-icon.sh", "Info.plist",
                       "LidAwake.app", "LidAwake.dmg", "LidAwake", "dmg-staging", "rw.dmg"]
                 .filter { FileManager.default.fileExists(atPath: $0) },

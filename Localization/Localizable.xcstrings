@@ -1,0 +1,822 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "\n\nRemove them manually (for files in /etc/sudoers.d, run “sudo rm <path>” in Terminal), or fix the cause and choose Uninstall LidAwake… again.\n\n": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\n\nRemove them manually (for files in /etc/sudoers.d, run “sudo rm <path>” in Terminal), or fix the cause and choose Uninstall LidAwake… again.\n\n"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\n\nУдалите их вручную (для файлов в /etc/sudoers.d выполните в Терминале «sudo rm <путь>») или устраните причину и снова выберите «Удалить LidAwake…».\n\n"
+          }
+        }
+      }
+    },
+    " Nothing else was removed, but Launch at Login is now off; turn it back on from the menu.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Nothing else was removed, but Launch at Login is now off; turn it back on from the menu."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Больше ничего не удалено, но запуск при входе теперь выключен; включите его снова в меню."
+          }
+        }
+      }
+    },
+    " Nothing was removed.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Nothing was removed."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Ничего не было удалено."
+          }
+        }
+      }
+    },
+    "AC power": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AC power"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "От сети"
+          }
+        }
+      }
+    },
+    "About LidAwake": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About LidAwake"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "О LidAwake"
+          }
+        }
+      }
+    },
+    "Battery": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Battery"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "От батареи"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отмена"
+          }
+        }
+      }
+    },
+    "Check for Updates…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check for Updates…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверить обновления…"
+          }
+        }
+      }
+    },
+    "Checking for Updates…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking for Updates…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверка обновлений…"
+          }
+        }
+      }
+    },
+    "Connected to Power": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected to Power"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "При питании от сети"
+          }
+        }
+      }
+    },
+    "Developed by ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Developed by "
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разработчик: "
+          }
+        }
+      }
+    },
+    "Enable": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enable"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включить"
+          }
+        }
+      }
+    },
+    "Enable Automatic Sleep Control…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enable Automatic Sleep Control…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включить автоматическое управление сном…"
+          }
+        }
+      }
+    },
+    "Keep awake when:": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep awake when:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не засыпать:"
+          }
+        }
+      }
+    },
+    "Later": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Later"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Позже"
+          }
+        }
+      }
+    },
+    "Launch at Login": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Launch at Login"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запускать при входе"
+          }
+        }
+      }
+    },
+    "Let LidAwake manage sleep automatically?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Let LidAwake manage sleep automatically?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешить LidAwake управлять сном автоматически?"
+          }
+        }
+      }
+    },
+    "LidAwake %@ is available": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake %@ is available"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доступен LidAwake %@"
+          }
+        }
+      }
+    },
+    "LidAwake is up to date": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake is up to date"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake обновлён"
+          }
+        }
+      }
+    },
+    "LidAwake needs an administrator to install its sleep rule.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake needs an administrator to install its sleep rule."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake нужно разрешение администратора, чтобы установить правило управления сном."
+          }
+        }
+      }
+    },
+    "LidAwake needs an administrator to remove its sleep rule.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake needs an administrator to remove its sleep rule."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake нужно разрешение администратора, чтобы удалить правило управления сном."
+          }
+        }
+      }
+    },
+    "LidAwake needs attention": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake needs attention"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake требует внимания"
+          }
+        }
+      }
+    },
+    "LidAwake restores normal sleep, then removes:\n• its sleep rules /etc/sudoers.d/lidawake-%@ and, if it names this account, /etc/sudoers.d/lidawake (macOS asks for an administrator password)\n• its login item\n• its settings and ~/Library/Application Support/LidAwake\n• the app itself, moved to the Trash\n\nThen LidAwake quits.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake restores normal sleep, then removes:\n• its sleep rules /etc/sudoers.d/lidawake-%@ and, if it names this account, /etc/sudoers.d/lidawake (macOS asks for an administrator password)\n• its login item\n• its settings and ~/Library/Application Support/LidAwake\n• the app itself, moved to the Trash\n\nThen LidAwake quits."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake восстановит обычный сон, затем удалит:\n• свои правила сна /etc/sudoers.d/lidawake-%@ и, если оно указывает эту учётную запись, /etc/sudoers.d/lidawake (macOS запросит пароль администратора)\n• свой объект входа\n• свои настройки и ~/Library/Application Support/LidAwake\n• само приложение — оно будет перемещено в Корзину\n\nЗатем LidAwake завершит работу."
+          }
+        }
+      }
+    },
+    "LidAwake was not uninstalled.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake was not uninstalled."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake не удалён."
+          }
+        }
+      }
+    },
+    "LidAwake was only partly uninstalled. These items remain:\n": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake was only partly uninstalled. These items remain:\n"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake удалён не полностью. Остались:\n"
+          }
+        }
+      }
+    },
+    "LidAwake was uninstalled, but the app could not be moved to the Trash. Move it to the Trash yourself.\n\n": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake was uninstalled, but the app could not be moved to the Trash. Move it to the Trash yourself.\n\n"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake удалён, но приложение не удалось переместить в Корзину. Переместите его в Корзину вручную.\n\n"
+          }
+        }
+      }
+    },
+    "LidAwake was uninstalled. Left /etc/sudoers.d/lidawake in place because it belongs to another account or has content LidAwake does not recognize.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake was uninstalled. Left /etc/sudoers.d/lidawake in place because it belongs to another account or has content LidAwake does not recognize."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LidAwake удалён. Файл /etc/sudoers.d/lidawake оставлен на месте: он принадлежит другой учётной записи или содержит то, что LidAwake не распознаёт."
+          }
+        }
+      }
+    },
+    "No releases available yet": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No releases available yet"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Релизов пока нет"
+          }
+        }
+      }
+    },
+    "Not Now": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not Now"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не сейчас"
+          }
+        }
+      }
+    },
+    "On Battery": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On Battery"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "При питании от батареи"
+          }
+        }
+      }
+    },
+    "One admin approval lets LidAwake switch sleep on AC and battery and restore sleep when you quit or the menu app crashes. Only the two sleep-toggle commands are allowed without a password. Existing LidAwake rules will be narrowed to those commands.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One admin approval lets LidAwake switch sleep on AC and battery and restore sleep when you quit or the menu app crashes. Only the two sleep-toggle commands are allowed without a password. Existing LidAwake rules will be narrowed to those commands."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Однократное подтверждение администратора позволит переключать сон при смене питания и восстанавливать его при выходе или сбое приложения. Без пароля разрешены только две команды переключения сна. Старые правила LidAwake будут ограничены этими командами."
+          }
+        }
+      }
+    },
+    "Open Release": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Release"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть релиз"
+          }
+        }
+      }
+    },
+    "Quit": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выйти"
+          }
+        }
+      }
+    },
+    "Quit Anyway": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit Anyway"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всё равно выйти"
+          }
+        }
+      }
+    },
+    "Repair Sleep Setup…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repair Sleep Setup…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исправить настройку сна…"
+          }
+        }
+      }
+    },
+    "Sleep could not be restored": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sleep could not be restored"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось восстановить сон"
+          }
+        }
+      }
+    },
+    "Sleep enabled": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sleep enabled"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сон разрешён"
+          }
+        }
+      }
+    },
+    "Sleep setting needs attention…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sleep setting needs attention…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверьте настройку сна…"
+          }
+        }
+      }
+    },
+    "Sleep status unavailable": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sleep status unavailable"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Состояние сна недоступно"
+          }
+        }
+      }
+    },
+    "Stay Open": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stay Open"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остаться"
+          }
+        }
+      }
+    },
+    "Staying awake": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Staying awake"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не засыпает"
+          }
+        }
+      }
+    },
+    "The Mac may remain awake. Stay open to repair Sleep Setup and try again.\n\n": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Mac may remain awake. Stay open to repair Sleep Setup and try again.\n\n"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac может не засыпать. Оставьте приложение открытым, исправьте настройку сна и повторите попытку.\n\n"
+          }
+        }
+      }
+    },
+    "There are no public releases on GitHub yet.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There are no public releases on GitHub yet."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На GitHub пока нет публичных релизов."
+          }
+        }
+      }
+    },
+    "Turn Off External Display on Lid Close": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn Off External Display on Lid Close"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выключать внешний дисплей при закрытии крышки"
+          }
+        }
+      }
+    },
+    "Uninstall": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uninstall"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить"
+          }
+        }
+      }
+    },
+    "Uninstall LidAwake?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uninstall LidAwake?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить LidAwake?"
+          }
+        }
+      }
+    },
+    "Uninstall LidAwake…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uninstall LidAwake…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить LidAwake…"
+          }
+        }
+      }
+    },
+    "Uninstall was canceled. Nothing was removed.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uninstall was canceled. Nothing was removed."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удаление отменено. Ничего не было удалено."
+          }
+        }
+      }
+    },
+    "Unknown error": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown error"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Неизвестная ошибка"
+          }
+        }
+      }
+    },
+    "You’re running %@. Open the release page to download the update.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You’re running %@. Open the release page to download the update."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У вас версия %@. Откройте страницу релиза, чтобы скачать обновление."
+          }
+        }
+      }
+    },
+    "You’re running version %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You’re running version %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У вас версия %@."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

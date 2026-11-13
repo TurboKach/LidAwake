@@ -4,6 +4,11 @@ cd "$(dirname "$0")/.."
 BINARY="LidAwake.app/Contents/MacOS/LidAwake"
 plutil -lint LidAwake.app/Contents/Info.plist
 codesign --verify --strict LidAwake.app
+for lang in en ru; do
+    STRINGS="LidAwake.app/Contents/Resources/$lang.lproj/Localizable.strings"
+    [ -f "$STRINGS" ] || { echo "Missing $STRINGS" >&2; exit 1; }
+    plutil -lint "$STRINGS"
+done
 if [ "${1:-}" = universal ]; then
     lipo "$BINARY" -verify_arch arm64
     lipo "$BINARY" -verify_arch x86_64
