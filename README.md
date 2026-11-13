@@ -29,13 +29,18 @@ menu is open), then choose **Connected to Power** and/or
 **On Battery** under **Keep awake when:**. With only AC selected, unplugging allows
 sleep and reconnecting keeps the Mac awake again. Turning the master off restores
 sleep, stops LidAwake's display blanking, and dims the dependent controls while keeping
-their selections. Setup, login, and update actions remain available. Existing installs
-retain their saved power-source choices with the master enabled on first upgrade.
+their selections. Setup, login, and update actions remain available. The master is on only
+while at least one condition is checked: unchecking the last one turns it off, and turning
+it on with none checked checks both. A fresh install starts with the master off and both
+conditions checked. Existing installs retain their saved power-source choices, and a setup
+that keeps the Mac awake today stays that way after the upgrade.
 
 ## How it works
 
 Toggles `pmset disablesleep` (`0` = sleep, `1` = stay awake) — one live, system-wide
-value, so LidAwake watches power changes and applies your per-source policy itself. A
+value, so LidAwake watches power changes and applies your per-source policy itself. It
+reads the value from `pmset -g`; on macOS 27, where that output no longer lists
+`SleepDisabled`, it reads the same value from the `IOPMrootDomain` registry entry. A
 single background worker owns these writes. On lid
 close it runs `pmset displaysleepnow` to blank the internal screen — and the external one
 too, unless you keep clamshell mode on. Requires **macOS 12+**.
@@ -51,7 +56,8 @@ too, unless you keep clamshell mode on. Requires **macOS 12+**.
    - Open it → click **Done** (*not* Move to Trash) → **System Settings → Privacy & Security → Open Anyway**, or
    - run `xattr -dr com.apple.quarantine /Applications/LidAwake.app`
 
-**First run** offers a scoped passwordless rule at `/etc/sudoers.d/lidawake-<your UID>`.
+**First run** offers a scoped passwordless rule at `/etc/sudoers.d/lidawake-<your UID>`
+(the administrator password dialog explains this in LidAwake's own words, English or Russian).
 It allows exactly `/usr/bin/pmset -a disablesleep 0` and `... disablesleep 1`, validated
 with `visudo`. Setup is required before enabling keep-awake so crash recovery can restore
 sleep without a password prompt. “Not Now” leaves keep-awake unavailable; setup remains

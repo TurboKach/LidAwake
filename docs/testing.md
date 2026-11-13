@@ -17,11 +17,15 @@ Mach-O deployment targets. GitHub Actions runs tests and these bundle checks.
 
 Use a ventilated MacBook. Record the original `pmset -g` state and quit any old LidAwake
 copy first. These checks deliberately change sleep settings and require interactive
-admin/Automation approval; they are not part of the automated tests.
+admin/Automation approval; they are not part of the automated tests. On macOS 27,
+`pmset -g` no longer prints `SleepDisabled`: wherever a check says `SleepDisabled` or
+`pmset -g`, read the value with `ioreg -r -c IOPMrootDomain -d 1 | grep SleepDisabled`
+(`Yes` = sleep disabled, `No` = sleep allowed).
 
 1. Build/open `LidAwake.app`. Choose Not Now, then try enabling keep-awake. Confirm setup
    is offered again and canceling leaves the preference unchanged. Complete setup and
-   verify its two exact commands using `sudo -l`. A legacy installation should preserve
+   verify its two exact commands using `sudo -l`. The password dialog must show LidAwake's
+   own text in English and Russian, not "osascript wants to make changes". A legacy installation should preserve
    the old account while removing every wildcard from its rule.
 2. Enable AC and disable battery. Plug/unplug with the lid open, closed, and the menu
    left open. Check actual `SleepDisabled` state, icon, and menu. Battery must restore
@@ -54,6 +58,21 @@ admin/Automation approval; they are not part of the automated tests.
 8. Open About and check TurboKach's credit, version, and GitHub link in English/Russian.
    Check updates while online/offline. Verify a newer stable release opens the correct
    release page only after confirmation. There must be no update request at startup.
+9. Switch rule, with Sleep Setup complete, on a test machine after quitting LidAwake and
+   running `defaults delete local.lidawake`: the first launch must show the switch off and
+   both **Keep awake when** conditions checked. Turn the switch on: it must stay on. Uncheck one
+   condition: the switch stays on. Uncheck the last: the switch turns off, sleep is restored,
+   and both boxes are unchecked and dimmed, also after a relaunch. Turn the switch on again:
+   both conditions must be checked. With one condition checked, turn the switch off and on:
+   the conditions must not change. Unchecking the last condition for the power source that
+   is not in use must turn the switch off without changing `SleepDisabled`. To check an
+   upgrade, quit LidAwake, run `defaults delete local.lidawake`, then
+   `defaults write local.lidawake awakeOnAC -bool true` and
+   `defaults write local.lidawake awakeOnBattery -bool false` (1.2.0 saves nothing
+   until the switch or a condition is first changed): the first launch must show the switch
+   on with AC only checked. Finally quit, set `awakeOnAC` and `awakeOnBattery` to `-bool false`
+   and `lidAwakeEnabled` to `-bool true`: the next launch must show the switch off with both
+   conditions checked.
 
 After testing, quit the app and verify sleep is enabled. If both processes were killed
 and recovery cannot run, use `sudo pmset -a disablesleep 0` to restore sleep manually.
