@@ -14,7 +14,7 @@ This file is the entry point for the next session. Each session takes the first 
 7. `docs/prompts/release-1.3-arc-c-plan.md` — Arc C as built, with the owner's decisions of 2026-11-13 (its "Decisions" sections).
 
 ## The decision that shapes this handoff
-On 2026-11-13 the release was built, reviewed and ready. The owner held the push and chose **one release with everything**: the four arcs below are built on this branch first, then a single v1.3.0 goes out. The owner accepted the cost: macOS 27 users stay on the broken 1.2.0 until then.
+On 2026-11-13 the release was built, reviewed and ready. The owner held the push and chose **one release with everything**: the four arcs below are built on this branch first, then a single v1.3.0 goes out. Later the same day the owner took Arc D out of 1.3.0 (see the queue). The owner accepted the cost: macOS 27 users stay on the broken 1.2.0 until then.
 
 ## State at handoff
 - **Branch:** `release-1.3`. HEAD is the commit that records Arc C in this file; the reviewed head before it is `cc2ca5f` (`07eb806` after it is docs only). Local `main` is `7fb5f22`, `origin/main` is `e10fe0b`. **Nothing is pushed**; the branch is 34 commits ahead of `origin/main`.
@@ -47,13 +47,13 @@ Each arc is its own session with its own plan, review gate and owner checks. The
 - [ ] **Screenshot — `docs/menu.png` is still the old picture.** The owner captures it again (on battery, master on, both conditions on, External Display and Launch at Login checked). The README alt text already describes the new picture, so the two disagree until then. The commit that adds it gets one more review round. Any session may take this when the owner supplies the file; it must land before Ship.
 - [x] **Arc B — the password dialog names LidAwake.** Landed 2026-11-13: the admin script runs inside the app through `NSAppleScript`, and the dialog is titled "LidAwake". Plan and decisions: `docs/prompts/release-1.3-arc-b-plan.md`. The owner's device pass passed. The notes draft is updated.
 - [x] **Arc C — String Catalog locales.** Landed 2026-11-13: the texts live in `Localization/Localizable.xcstrings`, the build compiles them into the bundle, and `scripts/check-strings.sh` checks them. No wording changed. Plan and decisions: `docs/prompts/release-1.3-arc-c-plan.md`. The owner's device pass passed. The notes draft is updated.
-- [ ] **Arc D — Developer ID signing and notarization.** Context: `docs/todos/notarize-direct-dmg.md`. **Blocked on the owner:** a notary credential stored with `xcrun notarytool store-credentials`. Check the hardened runtime against Arc B's in-app script before signing off: `do shell script … with administrator privileges` through `NSAppleScript` must still show the dialog and run (it sends no Apple event to another app; the Login Items path through System Events is separate). That check needs the owner and a real password. It changes the install text in the README and in the release notes draft.
+- [x] **Arc D — Developer ID signing and notarization: not in 1.3.0.** Owner decision of 2026-11-13, with no notary credential stored: "Ship 1.3.0 without notarization". 1.3.0 stays ad-hoc signed; the install text in the README and in the notes draft already says so. The item stays in `docs/tech-debt.md` for a later release (`docs/todos/notarize-direct-dmg.md`).
 - [ ] **Ship.** The checklist below.
 
 A and B may share one session only if the plan stays inside one arc's size (at most 5 execution steps, one review gate). Otherwise one arc per session.
 
 ## Ship checklist (after the last arc)
-1. Update `docs/prompts/release-1.3-notes-draft.md` to the final state, and show it to the owner. Its line "Validated with 111 regression tests" is out of date (113 on `cc2ca5f`).
+1. Update `docs/prompts/release-1.3-notes-draft.md` to the final state, and show it to the owner. Its test count is 113, as on `cc2ca5f`; check it against the final head.
 2. Full verification on the final head: `swift test`, the opt-in registry test, `scripts/test-recovery.sh`, `scripts/check-strings.sh`, universal build and check. Every arc's codex gate is clean, and the ranges join with no gap from `f05d57d` to the head.
 3. Scan every commit to be pushed for names of other projects and for credentials.
 4. With the owner's approval: fast-forward `main` to `release-1.3` and push `main`. GitHub then marks PR #3 as merged. Wait for CI to pass.
@@ -80,6 +80,7 @@ Ask again before posting; the wording was approved, the moment was not. No `@` m
 - On locales: "make sure locales are living in corresponding folder so we can easily extend it later", then, after the String Catalog was explained as Apple's current practice: "ok lets do as apple says".
 - On a render: "battery icon looks horizontally compressed on renders. check plz." Renders must draw symbols at their natural size.
 - On this handoff: "prepare a handoff to finish all that what we planned in the new version", with the choice "One release with everything".
+- On notarization, with no notary credential stored: "Ship 1.3.0 without notarization".
 - Never push without explicit approval in the session.
 
 ## Environment traps

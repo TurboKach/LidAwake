@@ -19,7 +19,7 @@ One line per item, context in the linked file. Product ideas live in `TODO.md`.
 - **[conf:0.5] Sources/LidAwakeCore/SleepControl.swift:73** — when SleepDisabled is already 1 and not owned, `probeRule()` proves only `disablesleep 1`; a rule denying `0` still passes → docs/todos/probe-one-sided-rule-when-already-awake.md
 - **lidawake-fixes review close-out** — 2 theoretical leftovers (uninstall abort variant, login-item rollback) → docs/todos/lidawake-fixes-close-out.md
 - **release-1.3 review close-out** — 5 theoretical leftovers (delayed pmset apply, macOS 27 post-write read, lid-closed probe suspend, 65 s reply deadline, persist key order) → docs/todos/release-1.3-close-out.md
-- **Release 1.3.0: notarize the direct DMG** — Developer ID signing, hardened runtime, notarize and staple in `release.sh`; needs a notary credential from the owner → docs/todos/notarize-direct-dmg.md
+- **Notarize the direct DMG** — after 1.3.0 (owner, 2026-11-13); Developer ID signing, hardened runtime, notarize and staple in `release.sh`; needs a notary credential → docs/todos/notarize-direct-dmg.md
 - **Localize the remaining English-only texts** — Core's ~40 error texts, 4 admin-script `echo` lines and the Automation usage description have no Russian; own arc → docs/todos/localize-remaining-english-texts.md
 - **Arc B review close-out** — 2 theoretical leftovers of "no timeout" (power changes not applied, Quit waits, while a password dialog is unanswered) → docs/todos/arc-b-close-out.md
 - **`swift build` warns about unhandled root files** — Package.swift's exclude list lacks `CLAUDE.md` and `CLAUDE.local.md`; warning only → docs/todos/swiftpm-unhandled-files-warning.md
