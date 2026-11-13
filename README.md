@@ -6,7 +6,7 @@ other long-running terminal jobs keep running with the laptop shut. No external 
 
 A focused, closed-lid alternative to **Amphetamine** / **Caffeine**.
 
-<img src="docs/menu.png" width="399" alt="The LidAwake menu: the LidAwake switch is on with the status line Staying awake · Battery, below it Connected to Power and On Battery are both switched on under Keep awake when, followed by Turn Off External Display on Lid Close (checked), Repair Sleep Setup…, Uninstall LidAwake…, Launch at Login (checked), About LidAwake, Check for Updates… and Quit.">
+<img src="docs/menu.png" width="354" alt="The LidAwake menu: the LidAwake switch is on with the status line Staying awake · Battery, below it Connected to Power and On Battery are both switched on under Keep awake when, followed by Turn Off External Display on Lid Close (checked), Repair Sleep Setup…, Uninstall LidAwake…, Launch at Login, About LidAwake, Check for Updates… and Quit.">
 
 ## Why
 
