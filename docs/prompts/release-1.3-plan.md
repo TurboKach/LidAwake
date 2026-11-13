@@ -121,7 +121,7 @@ The unplanned commit `6fe6ce3` fixes `scripts/check-build.sh` (Xcode 27's `lipo`
 3. PR #3 shows as merged; thank its author in a comment. Close PR #2 with a comment that explains the choice and names the credit. Add a comment on the closed issue #1 that points to the release. Comment texts are shown for approval first.
 4. Post-release check: `releases/latest` returns `v1.3.0` with the `html_url` form the in-app update check expects (`GitHubUpdates.swift:63`); the downloaded DMG matches the checksum; the owner's installed 1.2.0 shows the update.
 5. Cleanup: delete the merged local branches `lidawake-fixes` and `release-1.3`; record the landed shas in the session's private notes, as the 2026-10-06 brief asks.
-6. Write the handoff briefs for the next arcs to the session scratchpad: the two 1.3.1 arcs are notarization of the direct DMG (`docs/todos/notarize-direct-dmg.md`) and String Catalog locales (`docs/todos/string-catalog-locales.md`). Each runs in a new session.
+6. Write the handoff briefs for the next arcs to the session scratchpad: the four 1.3.1 arcs are notarization of the direct DMG (`docs/todos/notarize-direct-dmg.md`), String Catalog locales (`docs/todos/string-catalog-locales.md`), menu rows that stay open (`docs/todos/menu-rows-stay-open.md`) and the admin dialog title (`docs/todos/admin-dialog-title.md`). Each runs in a new session.
 
 ## Deferred-work index (master, docs only)
 - Add one line for `SleepControl.swift` `releaseClaim`: a failed re-read after the probe keeps `ownsOverride = true`, so the next reconcile skips the probe (P2; context in `docs/todos/`). Step 1 moves that file's lines by about 26, so the two existing index lines that cite it (`docs/tech-debt.md:13, :16`) get their line numbers corrected in the same commit.
@@ -135,5 +135,8 @@ The unplanned commit `6fe6ce3` fixes `scripts/check-build.sh` (Xcode 27's `lipo`
 5. **README screenshot:** the README gets a real screenshot of the open menu in 1.3.0, captured by the owner at the device pass. That commit is followed by one more whole-range review round.
 6. **Locales:** the UI strings move to a String Catalog as an own arc in 1.3.1 (`docs/todos/string-catalog-locales.md`).
 7. **Review findings:** all standalone P2 and theoretical review findings are deferred to the index (`docs/tech-debt.md`).
+8. **Device pass (2026-11-13):** all four planned checks passed on the 1.3.0 build.
+9. **"LidAwake on GitHub" row:** removed in 1.3.0 (commit 24bd8ec), because "About LidAwake" already shows the repository link.
+10. **Deferred to 1.3.1 by the owner:** a menu that stays open on condition clicks (`docs/todos/menu-rows-stay-open.md`) and the admin dialog title that says "osascript" (`docs/todos/admin-dialog-title.md`).
 
 Assumption: the version is 1.3.0, not 1.2.1, because the release adds a menu item and changes switch behavior.
