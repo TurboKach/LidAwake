@@ -67,6 +67,10 @@ sleep without a password prompt. “Not Now” leaves keep-awake unavailable; se
 accessible from the menu. “Repair Sleep Setup…” also migrates the old wildcard rule,
 preserving its account while narrowing its permissions.
 
+The app's texts live in `Localization/Localizable.xcstrings`. LidAwake follows the system
+language or the per-app language set in System Settings, and shows English for any other
+language. A new language is a new set of values in that catalog.
+
 Quit the old app before running an updated copy. Only one new LidAwake session can own
 sleep control at a time. Avoid using another `disablesleep` manager concurrently.
 

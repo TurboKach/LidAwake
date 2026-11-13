@@ -11,7 +11,9 @@ No test changes the host's power settings, sudoers files, or login items.
 
 `./scripts/build-app.sh universal` builds and signs the app for arm64 and x86_64.
 `./scripts/check-build.sh universal` checks the signature, plist, and both macOS 12
-Mach-O deployment targets. GitHub Actions runs tests and these bundle checks.
+Mach-O deployment targets. `./scripts/check-strings.sh` checks that every text in the
+code is in `Localization/Localizable.xcstrings` with an English and a Russian value.
+GitHub Actions runs tests and these checks.
 
 ## Manual checks before publishing
 
@@ -80,6 +82,11 @@ admin/Automation approval; they are not part of the automated tests. On macOS 27
    on with AC only on. Finally quit, set `awakeOnAC` and `awakeOnBattery` to `-bool false`
    and `lidAwakeEnabled` to `-bool true`: the next launch must show the switch off with both
    conditions on.
+10. Run the app once in Russian and once in English (set the system language, or the
+    per-app language in System Settings → Language & Region → Applications). In each,
+    read the menu, the Sleep Setup alert, the **Uninstall LidAwake…** alert (then choose
+    Cancel), **Check for Updates…** and the About panel: every text must be in that
+    language, with no English left in Russian and no text cut off.
 
 After testing, quit the app and verify sleep is enabled. If both processes were killed
 and recovery cannot run, use `sudo pmset -a disablesleep 0` to restore sleep manually.
