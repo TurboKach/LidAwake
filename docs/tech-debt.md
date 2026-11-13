@@ -23,3 +23,4 @@ One line per item, context in the linked file. Product ideas live in `TODO.md`.
 - **1.3.1: String Catalog locales** — move the `L("en", "ru")` pairs in LidAwake.swift to `Localizable.xcstrings`; own arc → docs/todos/string-catalog-locales.md
 - **1.3.1: keep the menu open on condition clicks** — the condition rows are standard items that close the menu; needs custom-view rows and rendered options → docs/todos/menu-rows-stay-open.md
 - **1.3.1: admin password dialog title says "osascript"** — run the privileged script inside the app so macOS names LidAwake → docs/todos/admin-dialog-title.md
+- **`swift build` warns about unhandled root files** — Package.swift's exclude list lacks `CLAUDE.md` and `CLAUDE.local.md`; warning only → docs/todos/swiftpm-unhandled-files-warning.md
