@@ -10,6 +10,6 @@ Depends: a notary credential (Apple ID app-specific password or an App Store Con
 
 Effort: medium. Own arc, with its own plan.
 
-Update 2026-11-13: the owner later chose one release with everything. This item is built before the 1.3.0 release, not in a 1.3.1; see `docs/prompts/release-1.3-next-session.md`.
+Update 2026-11-13: the owner later chose one release with everything. This item was to be built before the 1.3.0 release, not in a 1.3.1.
 
-Update 2026-11-13 (later session): no notary credential is stored, and the owner chose "Ship 1.3.0 without notarization". 1.3.0 stays ad-hoc signed; this item follows in a later release. The Mac has a Developer ID Application certificate. When this is built, check two things under the hardened runtime with the owner and a real password: the in-app admin script (`do shell script … with administrator privileges` through `NSAppleScript`), and that the signed bundle still holds and reads `en.lproj` and `ru.lproj` (signing must follow the catalog compile step in `scripts/build-app.sh`).
+Update 2026-11-13 (later session): no notary credential is stored, and the owner chose "Ship 1.3.0 without notarization". 1.3.0 shipped ad-hoc signed on 2026-11-13; this item follows in a later release. The Mac has a Developer ID Application certificate. When this is built, check two things under the hardened runtime with the owner and a real password: the in-app admin script (`do shell script … with administrator privileges` through `NSAppleScript`), and that the signed bundle still holds and reads `en.lproj` and `ru.lproj` (signing must follow the catalog compile step in `scripts/build-app.sh`).
