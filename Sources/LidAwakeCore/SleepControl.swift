@@ -1,4 +1,5 @@
 import Foundation
+import IOKit
 
 public protocol SleepControlling {
     func isAwake() throws -> Bool
@@ -15,13 +16,38 @@ protocol PowerSettings {
 final class PMSet: PowerSettings {
     let runner: CommandRunning
     let setup: PrivilegeSetup
-    init(runner: CommandRunning, setup: PrivilegeSetup) {
+    private let registryState: () throws -> Bool
+
+    init(runner: CommandRunning, setup: PrivilegeSetup,
+         registryState: @escaping () throws -> Bool = PMSet.registrySleepDisabled) {
         self.runner = runner
         self.setup = setup
+        self.registryState = registryState
     }
 
+    /// `pmset -g` stays the primary source: it is what `write` verifies against. macOS 27 stopped
+    /// printing `SleepDisabled` there at all, so when the key is absent the value comes from
+    /// IOPMrootDomain, which still carries it. Output that does mention the key but cannot be
+    /// parsed stays an error — a failed read must never be reported as sleep enabled.
     func read() throws -> Bool {
-        try Self.parse(runner.run("/usr/bin/pmset", ["-g"], timeout: 10).stdout)
+        let output = try runner.run("/usr/bin/pmset", ["-g"], timeout: 10).stdout
+        do { return try Self.parse(output) }
+        catch {
+            guard !output.contains("SleepDisabled") else { throw error }
+            return try registryState()
+        }
+    }
+
+    /// The live kernel value, readable without root. An absent property is an error, not a default.
+    static func registrySleepDisabled() throws -> Bool {
+        let root = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
+        guard root != 0 else { throw ControlError.message("Could not read the current sleep setting.") }
+        defer { IOObjectRelease(root) }
+        let property = IORegistryEntryCreateCFProperty(root, "SleepDisabled" as CFString, kCFAllocatorDefault, 0)
+        guard let value = property?.takeRetainedValue() as? Bool else {
+            throw ControlError.message("Could not read the current sleep setting.")
+        }
+        return value
     }
 
     static func parse(_ output: String) throws -> Bool {
