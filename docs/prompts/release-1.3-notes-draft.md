@@ -25,6 +25,6 @@ Download **LidAwake.dmg**, quit the running copy of LidAwake, and drag the app i
 
 The app supports **macOS 12 or later**, on **Apple Silicon and Intel**. It is ad-hoc signed and is not notarized; if macOS blocks the download, use **System Settings → Privacy & Security → Open Anyway**.
 
-Validated with 97 regression tests, process-crash recovery checks, and a universal build with verified macOS 12 deployment targets. The macOS 27 read is covered by unit tests and by confirmation from its contributors; reports from macOS 27 are welcome.
+Validated with 111 regression tests, process-crash recovery checks, and a universal build with verified macOS 12 deployment targets. The macOS 27 read is covered by unit tests and by confirmation from its contributors; reports from macOS 27 are welcome.
 
 Developed by [TurboKach](https://github.com/TurboKach).

@@ -21,6 +21,5 @@ One line per item, context in the linked file. Product ideas live in `TODO.md`.
 - **release-1.3 review close-out** — 5 theoretical leftovers (delayed pmset apply, macOS 27 post-write read, lid-closed probe suspend, 65 s reply deadline, persist key order) → docs/todos/release-1.3-close-out.md
 - **Release 1.3.0: notarize the direct DMG** — Developer ID signing, hardened runtime, notarize and staple in `release.sh`; needs a notary credential from the owner → docs/todos/notarize-direct-dmg.md
 - **Release 1.3.0: String Catalog locales** — move the `L("en", "ru")` pairs in LidAwake.swift to `Localizable.xcstrings`; own arc → docs/todos/string-catalog-locales.md
-- **Release 1.3.0: keep the menu open on condition clicks** — the condition rows are standard items that close the menu; needs custom-view rows and rendered options → docs/todos/menu-rows-stay-open.md
 - **Release 1.3.0: admin password dialog title says "osascript"** — run the privileged script inside the app so macOS names LidAwake → docs/todos/admin-dialog-title.md
 - **`swift build` warns about unhandled root files** — Package.swift's exclude list lacks `CLAUDE.md` and `CLAUDE.local.md`; warning only → docs/todos/swiftpm-unhandled-files-warning.md

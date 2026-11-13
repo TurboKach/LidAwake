@@ -7,14 +7,15 @@ This file is the entry point for the next session. Each session takes the first 
 ## Read first
 1. This file.
 2. `docs/prompts/release-1.3-plan.md` — what was planned, built and decided on 2026-11-13 (its "Decisions" section is the record).
-3. `docs/tech-debt.md` — the index of deferred work. The four "Release 1.3.0" lines are this queue.
+3. `docs/tech-debt.md` — the index of deferred work. The three "Release 1.3.0" lines are this queue.
 4. The todo file of the arc you take (paths in the queue).
+5. `docs/prompts/release-1.3-arc-a-plan.md` — Arc A as built, with the owner's decisions of 2026-11-13 (its "Decision" section and its Addendum).
 
 ## The decision that shapes this handoff
 On 2026-11-13 the release was built, reviewed and ready. The owner held the push and chose **one release with everything**: the four arcs below are built on this branch first, then a single v1.3.0 goes out. The owner accepted the cost: macOS 27 users stay on the broken 1.2.0 until then.
 
 ## State at handoff
-- **Branch:** `release-1.3`. HEAD is the commit that adds this file; the commit before it is `8edbdc6`. Local `main` is `7fb5f22`, `origin/main` is `e10fe0b`. **Nothing is pushed**; the branch is 15 commits ahead of `origin/main`.
+- **Branch:** `release-1.3`. HEAD is the commit that records Arc A in this file; the code head before it is `7b8deaf`. Local `main` is `7fb5f22`, `origin/main` is `e10fe0b`. **Nothing is pushed**; the branch is 22 commits ahead of `origin/main`.
 - **Landed on the branch:**
   - `b24a1b9`, `c7bab37` — macOS 27: read `SleepDisabled` from the `IOPMrootDomain` registry entry when `pmset -g` omits it (outside PR #3 merged with `--no-ff`, plus the uninstall-script fallback and tests).
   - `88bc328` — the master switch is on only with at least one condition (Core only).
@@ -22,18 +23,21 @@ On 2026-11-13 the release was built, reviewed and ready. The owner held the push
   - `0beb8ba` — version 1.3.0 (build 10), README and manual checks.
   - `6fe6ce3` — `scripts/check-build.sh`: one `lipo -verify_arch` call per architecture (Xcode 27 rejects two).
   - `24bd8ec` — the redundant "LidAwake on GitHub" menu row is removed.
-  - `34f22af` — `docs/menu.png`, a real screenshot, in the README.
-  - Docs: the plan, review files in `docs/reviews/release-1.3/`, index lines and todo files.
-- **Review:** the whole-range codex gate is clean on `f05d57d..34f22af` (round 2, zero P0/P1). Commits after `34f22af` are docs only. Standalone P2 and theoretical findings are deferred by the owner; they stay deferred.
-- **Tests on that code:** `swift test` 97 executed, 1 skipped (the opt-in registry test), 0 failed. `LIDAWAKE_REAL_REGISTRY_TEST=1 swift test --filter testRegistryRead` passes on the owner's Mac. `scripts/test-recovery.sh` passes all 5 cases. `scripts/build-app.sh universal` and `scripts/check-build.sh universal` pass.
-- **Owner device pass (2026-11-13):** all checks passed on this build — the switch rule, relaunch, icon shapes. The app in the owner's `/Applications` is now this development build of 1.3.0.
+  - `34f22af` — `docs/menu.png`, a real screenshot, in the README (now out of date; see the queue).
+  - Arc A: `d196cb1` — the compact layout of `SwitchMenuRow` and `MenuEntry.Style.compactToggle` (Core); `4bf8440` — the two condition rows use it, README and manual checks; `27430a6` — the compact title is drawn whole (a private cell removes AppKit's 2 pt text inset); `7b8deaf` — a running operation no longer dims the menu (`operationInFlight` replaces the disabled-while-pending signal; `setupSleep`, `uninstallApp` and `toggleLogin` got their own guard).
+  - Docs: the plans, review files in `docs/reviews/release-1.3/`, index lines and todo files.
+- **Review:** the whole-range codex gate is clean on `f05d57d..34f22af` (round 2, zero P0/P1) and on `34f22af..7b8deaf` (Arc A, round 1, zero findings; the spec check found no gap). The two ranges join with no gap; the commit after `7b8deaf` is docs only. Standalone P2 and theoretical findings of the first range are deferred by the owner; they stay deferred. Arc A deferred nothing.
+- **Tests on `7b8deaf`:** `swift test` 111 executed, 1 skipped (the opt-in registry test), 0 failed. `LIDAWAKE_REAL_REGISTRY_TEST=1 swift test --filter testRegistryRead` passes on the owner's Mac. `scripts/test-recovery.sh` passes all 5 cases. `scripts/build-app.sh universal` and `scripts/check-build.sh universal` pass.
+- **Owner device passes (2026-11-13):** the first pass covered the switch rule, relaunch and icon shapes. The Arc A pass found that the whole menu flashed on a small-switch toggle; after the fix the owner confirmed on `7b8deaf`: the menu stays open on the two rows, no flash, everything else works. The app in the owner's `/Applications` is the development build of `7b8deaf`.
+- **Arc A decisions (owner):** switch rows on the two conditions only; mouse and VoiceOver only on those rows (no arrow keys or Return, as the master switch row); a running operation never dims a row.
 - **Release notes draft:** `docs/prompts/release-1.3-notes-draft.md`. It describes the state at handoff and must be updated by the arcs (see the ship checklist).
-- **Not verified by anyone here:** behavior on macOS 27 (the owner's Mac runs 26.x, where `pmset -g` still prints the line). Both PR authors reported their patch working on 27.0.1.
+- **Not verified by anyone here:** behavior on macOS 27 (the owner's Mac runs 26.x, where `pmset -g` still prints the line). Both PR authors reported their patch working on 27.0.1. The metrics of the two switch rows are those of macOS 26; on macOS 12–15 and 27 they may sit 2–3 pt off the standard rows.
 
 ## The queue
 Each arc is its own session with its own plan, review gate and owner checks. The feature base of an arc is the commit that adds its plan file.
 
-- [ ] **Arc A — the menu stays open on condition clicks.** Context: `docs/todos/menu-rows-stay-open.md`. The condition rows are standard menu items, which AppKit closes on click; the switch row stays open because it is a custom view. The owner wants rendered options before choosing which rows stay open and how they look. Needs a second device pass. `docs/menu.png` must be captured again afterward (by the owner).
+- [x] **Arc A — the menu stays open on condition clicks.** Landed 2026-11-13: "Connected to Power" and "On Battery" are switch rows (a small native switch, no hover highlight) that keep the menu open; a running operation no longer dims any row. Plan and decisions: `docs/prompts/release-1.3-arc-a-plan.md`. The owner's device pass passed.
+- [ ] **Screenshot — `docs/menu.png` is still the old picture.** The owner captures it again (on battery, master on, both conditions on, External Display and Launch at Login checked). The README alt text already describes the new picture, so the two disagree until then. The commit that adds it gets one more review round. Any session may take this when the owner supplies the file; it must land before Ship.
 - [ ] **Arc B — the password dialog names LidAwake.** Context: `docs/todos/admin-dialog-title.md`. The bold title is the asking process, today `osascript`. Running the script inside the app is expected to name LidAwake; nobody has seen that dialog yet. Needs the owner's test of Sleep Setup and of uninstall with a real password. When it lands, remove the "still titled osascript" sentence from the release notes draft.
 - [ ] **Arc C — String Catalog locales.** Context: `docs/todos/string-catalog-locales.md`. After A and B, so it moves the final strings. The proof is a before/after comparison of every English and Russian text. Open scope point for its plan: Core's English-only error texts.
 - [ ] **Arc D — Developer ID signing and notarization.** Context: `docs/todos/notarize-direct-dmg.md`. **Blocked on the owner:** a notary credential stored with `xcrun notarytool store-credentials`. Check the hardened runtime against Arc B's in-app script before signing off. It changes the install text in the README and in the release notes draft.
@@ -73,8 +77,14 @@ Ask again before posting; the wording was approved, the moment was not. No `@` m
 
 ## Environment traps
 - **The installed app is live.** `/Applications/LidAwake.app` runs and manages the real sleep setting. Never run `pmset -a …`, never launch a second copy (it shares the session lock and the settings domain), and never trigger an admin password prompt. `swift test` and `scripts/test-recovery.sh` use fakes and are safe.
-- **Screen capture is blocked for the agent.** Real screenshots come from the owner (Cmd+Shift+4, Space, click the menu).
-- **Renders** are built offscreen: states from the real `PolicyController` with a fake sleep, rows from a labeled copy of `updateMenu()` in `LidAwake.swift` (the app target cannot be imported), the real `SwitchMenuRow`, and the `NSMenuItem` images that `StableMenu` builds, drawn at their own size. An offscreen switch draws grey when it is on. The earlier harness lived in a temporary folder and is gone.
+- **Screen capture is blocked for the agent.** `screencapture` fails with "could not create image from rect": the terminal has no Screen Recording permission. Real screenshots come from the owner (Cmd+Shift+4, Space, click the menu), unless the owner grants that permission and Accessibility.
+- **`./build.sh` asks before it overwrites the installed app.** The owner runs it in their own Terminal (quit LidAwake first, answer `y`). Agents use `./scripts/build-app.sh` and `./scripts/check-build.sh` only.
+- **The shipped binary is stamped `minos 12.0, sdk 12.0`** (`vtool -show-build`), so AppKit draws legacy-size controls in the app: a regular `NSSwitch` is 38×22 and a small one 32×18, while its intrinsic size stays 38×22. `swift test` and a bare `swiftc` binary link the current SDK and draw differently. A probe or render binary must be patched to compare with the app: `vtool -set-build-version macos 12.0 12.0 -replace -output <out> <in>`, then `codesign --force --sign - <out>`. No test asserts a switch's pixel size.
+- **Renders** are built offscreen: states from the real `PolicyController` with a fake sleep, menus filled by the real `StableMenu` from a labeled copy of `updateMenu()` in `LidAwake.swift` (the app target cannot be imported), the real `SwitchMenuRow` views; standard rows are drawn by the harness. The harness lived in a temporary folder and is gone. Rules learned in Arc A:
+  - Check the harness against `docs/menu.png` before a render is shown. AppKit on macOS 26 applies the image column per section (between separators) and reserves the 8 pt state column only while some item, view-backed ones included, has a state other than off.
+  - An offscreen `NSSwitch` draws grey unless the offscreen `NSWindow` subclass answers `@objc(hasKeyAppearance)` with `true`. Force the Aqua appearance when the system is in Dark mode.
+  - A text field's cell draws its text 2 pt inside its frame and needs 4 pt more than the string width.
+  - A view-backed row cannot be judged without a render of the real view: Arc A's Step 3 render found truncated titles that the unit tests had passed.
 - **Xcode 27.2:** `lipo -verify_arch` takes one architecture per call. `xcrun xcstringstool compile <catalog> --output-directory <dir>` works and writes `<lang>.lproj/Localizable.strings`; its `extract` and `sync` commands are untried.
 - **Editor diagnostics are stale** in this repo; trust `swift build` and `swift test`.
 - **zsh:** `${PIPESTATUS[0]}` is empty; use `${pipestatus[1]}`.
