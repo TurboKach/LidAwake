@@ -108,6 +108,7 @@ Line numbers below are at `7fb5f22`. Step 1 shifts the lines in `SleepControl.sw
 
 ## Review
 Per-step codex rounds after Steps 1–4 (pinned), one whole-range codex challenge plus `spec-reviewer` after Step 5, then the fix loop until zero P0/P1.
+The unplanned commit `6fe6ce3` fixes `scripts/check-build.sh` (Xcode 27's `lipo` rejects two architectures after one `-verify_arch`); Step 5 found it.
 
 ## Verification that needs a person
 - **Owner device pass (about 5 minutes, before `release-1.3` merges into `main`):** install the build; uncheck the conditions one by one and see the switch turn off after the last; turn the switch on and see both conditions checked and ☕ on the right power source; quit and relaunch. See the new admin prompt text once (Cancel is enough).
@@ -120,7 +121,7 @@ Per-step codex rounds after Steps 1–4 (pinned), one whole-range codex challeng
 3. PR #3 shows as merged; thank its author in a comment. Close PR #2 with a comment that explains the choice and names the credit. Add a comment on the closed issue #1 that points to the release. Comment texts are shown for approval first.
 4. Post-release check: `releases/latest` returns `v1.3.0` with the `html_url` form the in-app update check expects (`GitHubUpdates.swift:63`); the downloaded DMG matches the checksum; the owner's installed 1.2.0 shows the update.
 5. Cleanup: delete the merged local branches `lidawake-fixes` and `release-1.3`; record the landed shas in the session's private notes, as the 2026-10-06 brief asks.
-6. Write the handoff brief for the next arc (1.3.1: Developer ID signing and notarization of the direct DMG) to the session scratchpad. That arc runs in a new session.
+6. Write the handoff briefs for the next arcs to the session scratchpad: the two 1.3.1 arcs are notarization of the direct DMG (`docs/todos/notarize-direct-dmg.md`) and String Catalog locales (`docs/todos/string-catalog-locales.md`). Each runs in a new session.
 
 ## Deferred-work index (master, docs only)
 - Add one line for `SleepControl.swift` `releaseClaim`: a failed re-read after the probe keeps `ownsOverride = true`, so the next reconcile skips the probe (P2; context in `docs/todos/`). Step 1 moves that file's lines by about 26, so the two existing index lines that cite it (`docs/tech-debt.md:13, :16`) get their line numbers corrected in the same commit.
@@ -131,5 +132,8 @@ Per-step codex rounds after Steps 1–4 (pinned), one whole-range codex challeng
 2. **macOS 27 confirmation:** release 1.3.0 directly and ask both contributors to confirm. (Not chosen: a pre-release first.)
 3. **Admin prompt wording:** fix it in this release (Step 3). This replaces the 2026-10-06 decision to defer it.
 4. **Notarization:** a follow-up 1.3.1 release; 1.3.0 stays ad-hoc signed. (Not chosen: stay ad-hoc for good; notarize in 1.3.0.)
+5. **README screenshot:** the README gets a real screenshot of the open menu in 1.3.0, captured by the owner at the device pass. That commit is followed by one more whole-range review round.
+6. **Locales:** the UI strings move to a String Catalog as an own arc in 1.3.1 (`docs/todos/string-catalog-locales.md`).
+7. **Review findings:** all standalone P2 and theoretical review findings are deferred to the index (`docs/tech-debt.md`).
 
 Assumption: the version is 1.3.0, not 1.2.1, because the release adds a menu item and changes switch behavior.

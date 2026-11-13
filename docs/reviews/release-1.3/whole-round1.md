@@ -1,0 +1,3 @@
+# codex challenge — range f05d57dd627f5ff9a2e301e7c04fad1bd59ccf0e..6fe6ce3a85270cec0e2a37f3b6ae6d7165552a25 — checkout /Users/turbokach/Dev/LidAwake — model gpt-6.1-sol/medium — exit 0 — 173s
+Sources/LidAwakeCore/SleepControl.swift:215 — [P2] With battery-only keep-awake active, connect AC while sleep restoration fails, then uncheck Battery: the inactive-source guard skips restoration but commits the master off and stops display blanking, leaving sleep disabled despite the accepted “off” transition.
+LidAwake.swift:45 — [P2] Enabling with no saved conditions updates three preference keys separately; a crash after saving `lidAwakeEnabled=true` leaves both conditions false, so startup normalization silently turns the successfully applied keep-awake policy off on relaunch.

@@ -1,0 +1,6 @@
+# codex challenge — range 24641f5e0c70817381b26488b9bb47a0753117e0..0beb8ba1b27b9bb2379219cee448ee98849ad576 — checkout /var/folders/l7/91m9cppx1gs8v15q9hshwb780000gn/T//codex-challenge/3380fce1e2f1/review-0beb8ba1-52599 — model gpt-6.1-sol/medium — exit 0 — 165s
+Sources/LidAwakeCore/SleepControl.swift:85 — Enabling from `SleepDisabled=0` probes `0→1→0` before finally writing `1`; with the lid closed, the intermediate restore can suspend the Mac before enable completes, interrupting AC-only operation on reconnection.
+
+Sources/LidAwakeCore/SleepControl.swift:80 — When `SleepDisabled=1`, the permission probe checks only writing `1`; an effective sudo policy denying `0` still passes setup verification, so the app accepts ownership but cannot restore sleep on disable, quit, or crash.
+
+Sources/LidAwakeCore/SleepWorker.swift:166 — The 65-second reply deadline is shorter than the enable path’s nine sequential commands: eight seconds each passes every command’s ten-second timeout but disconnects the client, triggers restoration, and leaves sleep control unusable until relaunch.
