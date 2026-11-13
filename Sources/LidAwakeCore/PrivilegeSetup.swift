@@ -6,10 +6,16 @@ public final class PrivilegeSetup {
     private let uid: uid_t
     private let runner: CommandRunning
     private let legacyPath: String
+    private let installPrompt: String?
+    private let uninstallPrompt: String?
 
-    public init(runner: CommandRunning, uid: uid_t = getuid(), directory: String = "/etc/sudoers.d") {
+    /// The prompts are the texts of the system's admin password dialogs; nil keeps the system's default.
+    public init(runner: CommandRunning, uid: uid_t = getuid(), directory: String = "/etc/sudoers.d",
+                installPrompt: String? = nil, uninstallPrompt: String? = nil) {
         self.runner = runner
         self.uid = uid
+        self.installPrompt = installPrompt
+        self.uninstallPrompt = uninstallPrompt
         path = directory + "/lidawake-\(uid)"
         legacyPath = directory + "/lidawake"
     }
@@ -36,7 +42,7 @@ public final class PrivilegeSetup {
 
     public func install() throws {
         _ = try runner.run("/usr/bin/osascript", ["-e",
-            "do shell script \(appleScriptString(installationScript)) with administrator privileges"], timeout: 120)
+            "do shell script \(appleScriptString(installationScript))\(promptClause(installPrompt)) with administrator privileges"], timeout: 120)
         guard isInstalled else { throw ControlError.message("Sleep setup could not be verified. Try Repair Sleep Setup.") }
     }
 
@@ -53,13 +59,17 @@ public final class PrivilegeSetup {
     @discardableResult
     public func uninstall() throws -> Bool {
         let output = try runner.run("/usr/bin/osascript", ["-e",
-            "do shell script \(appleScriptString(uninstallationScript)) with administrator privileges"], timeout: 120)
+            "do shell script \(appleScriptString(uninstallationScript))\(promptClause(uninstallPrompt)) with administrator privileges"], timeout: 120)
         let keptLegacy = output.stdout.trimmingCharacters(in: .whitespacesAndNewlines) == "kept-legacy"
         let remaining = remainingRules.filter { !(keptLegacy && $0 == legacyPath) }
         guard remaining.isEmpty else {
             throw ControlError.message("Sleep rules were not removed: " + remaining.joined(separator: ", "))
         }
         return keptLegacy
+    }
+
+    private func promptClause(_ prompt: String?) -> String {
+        prompt.map { " with prompt \(appleScriptString($0))" } ?? ""
     }
 
     var uninstallationScript: String {

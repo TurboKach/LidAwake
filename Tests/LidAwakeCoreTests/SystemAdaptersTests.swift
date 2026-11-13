@@ -257,6 +257,33 @@ final class SystemAdaptersTests: XCTestCase {
             "do shell script \(appleScriptString(setup.uninstallationScript)) with administrator privileges"])
     }
 
+    func testAdminPromptsAreAddedToTheScriptLinesAndEscaped() throws {
+        let plain = RecordingRunner(), prompted = RecordingRunner(), escaped = RecordingRunner()
+        let unset = PrivilegeSetup(runner: plain, uid: 502, directory: directory.path)
+        let install = PrivilegeSetup(runner: prompted, uid: 502, directory: directory.path,
+                                     installPrompt: "LidAwake needs an administrator to install its sleep rule.",
+                                     uninstallPrompt: "LidAwake needs an administrator to remove its sleep rule.")
+        let tricky = PrivilegeSetup(runner: escaped, uid: 502, directory: directory.path,
+                                    installPrompt: "Install \"LidAwake\"\nnow", uninstallPrompt: "Remove \"LidAwake\"\nnow")
+        for setup in [unset, install, tricky] {
+            _ = try? setup.install() // Not verified afterwards: the fake runner installs nothing.
+            _ = try? setup.uninstall() // Fails the same way; only the osascript arguments matter here.
+        }
+        XCTAssertEqual(plain.calls.map { $0.1 }, [
+            ["-e", "do shell script \(appleScriptString(unset.installationScript)) with administrator privileges"],
+            ["-e", "do shell script \(appleScriptString(unset.uninstallationScript)) with administrator privileges"]])
+        XCTAssertEqual(prompted.calls.map { $0.1 }, [
+            ["-e", "do shell script \(appleScriptString(install.installationScript))"
+                + " with prompt \"LidAwake needs an administrator to install its sleep rule.\" with administrator privileges"],
+            ["-e", "do shell script \(appleScriptString(install.uninstallationScript))"
+                + " with prompt \"LidAwake needs an administrator to remove its sleep rule.\" with administrator privileges"]])
+        XCTAssertEqual(escaped.calls.map { $0.1 }, [
+            ["-e", "do shell script \(appleScriptString(tricky.installationScript))"
+                + " with prompt \"Install \\\"LidAwake\\\"\\nnow\" with administrator privileges"],
+            ["-e", "do shell script \(appleScriptString(tricky.uninstallationScript))"
+                + " with prompt \"Remove \\\"LidAwake\\\"\\nnow\" with administrator privileges"]])
+    }
+
     func testUninstallerRefusesSymlinksAndRemovesNothing() throws {
         let setup = PrivilegeSetup(runner: RecordingRunner(), uid: 502, directory: directory.path)
         let target = directory.appendingPathComponent("untouched")

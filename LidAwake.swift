@@ -26,7 +26,12 @@ private struct MenuState {
 private final class AppRuntime {
     let runner = ProcessCommandRunner()
     private(set) var sleep = SleepWorkerClient(executable: Bundle.main.executableURL!)
-    lazy var setup = PrivilegeSetup(runner: runner)
+    lazy var setup = PrivilegeSetup(
+        runner: runner,
+        installPrompt: L("LidAwake needs an administrator to install its sleep rule.",
+                         "LidAwake нужно разрешение администратора, чтобы установить правило управления сном."),
+        uninstallPrompt: L("LidAwake needs an administrator to remove its sleep rule.",
+                           "LidAwake нужно разрешение администратора, чтобы удалить правило управления сном."))
     lazy var login = LoginItems(runner: runner, bundleURL: Bundle.main.bundleURL)
     private(set) lazy var controller = makeController(
         policy: SleepPolicy(isEnabled: UserDefaults.standard.bool(forKey: "lidAwakeEnabled"),
