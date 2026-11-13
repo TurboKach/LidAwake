@@ -1,0 +1,4 @@
+# codex challenge — range 7b8deaf138506b3ad0d7c3ff53466a87f6d89c69..2f880d8082a5480466ed08d33d5c4857e2c08e82 — checkout /Users/turbokach/Dev/LidAwake — model gpt-6.1-sol/medium — exit 0 — 103s
+LidAwake.swift:188 — With keep-awake enabled on AC only, open Repair Sleep Setup, leave authorization unanswered, then unplug: the unbounded script keeps `busy` true, suppressing reconciliation indefinitely and leaving sleep disabled on battery.
+
+LidAwake.swift:161 — Request Quit during unanswered setup authorization: restoration queues behind the unbounded AppleScript call, so `.terminateLater` never completes and sleep remains disabled until authorization finishes or the app is force-quit.
