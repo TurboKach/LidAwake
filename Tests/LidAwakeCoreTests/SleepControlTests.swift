@@ -127,7 +127,7 @@ final class SleepControlTests: XCTestCase {
             let sleep = FakeSleep()
             sleep.failure = error
             var saved = [SleepPolicy]()
-            let controller = PolicyController(policy: SleepPolicy(), sleep: sleep, onACPower: { true }, persist: { saved.append($0) })
+            let controller = PolicyController(policy: SleepPolicy(isEnabled: true, onAC: false, onBattery: true), sleep: sleep, onACPower: { true }, persist: { saved.append($0) })
             XCTAssertThrowsError(try controller.toggle(onAC: true))
             XCTAssertFalse(controller.policy.onAC)
             XCTAssertTrue(saved.isEmpty)
@@ -137,7 +137,7 @@ final class SleepControlTests: XCTestCase {
     func testUnplugAndReplugApplyIndependentPolicies() throws {
         let sleep = FakeSleep()
         var onAC = true
-        let controller = PolicyController(policy: SleepPolicy(onAC: true), sleep: sleep, onACPower: { onAC }, persist: { _ in })
+        let controller = PolicyController(policy: SleepPolicy(isEnabled: true, onAC: true, onBattery: false), sleep: sleep, onACPower: { onAC }, persist: { _ in })
         try controller.reconcile()
         onAC = false
         try controller.reconcile()
@@ -149,16 +149,16 @@ final class SleepControlTests: XCTestCase {
     func testInactivePreferenceDoesNotChangeCurrentPowerState() throws {
         let sleep = FakeSleep()
         var saved: SleepPolicy?
-        let controller = PolicyController(policy: SleepPolicy(), sleep: sleep, onACPower: { true }, persist: { saved = $0 })
+        let controller = PolicyController(policy: SleepPolicy(isEnabled: true, onAC: true, onBattery: false), sleep: sleep, onACPower: { true }, persist: { saved = $0 })
         try controller.toggle(onAC: false)
-        XCTAssertEqual(saved, SleepPolicy(onBattery: true))
+        XCTAssertEqual(saved, SleepPolicy(isEnabled: true, onAC: true, onBattery: true))
         XCTAssertTrue(sleep.writes.isEmpty)
     }
 
     func testPowerSourceIsReadWhenQueuedReconciliationRuns() throws {
         let sleep = FakeSleep()
         var onAC = true
-        let controller = PolicyController(policy: SleepPolicy(onAC: true), sleep: sleep, onACPower: { onAC }, persist: { _ in })
+        let controller = PolicyController(policy: SleepPolicy(isEnabled: true, onAC: true, onBattery: false), sleep: sleep, onACPower: { onAC }, persist: { _ in })
         onAC = false
         try controller.reconcile()
         XCTAssertEqual(sleep.writes, [false])
@@ -169,7 +169,7 @@ final class SleepControlTests: XCTestCase {
         let session = try SleepSession(settings: power, journal: journal)
         var onAC = true
         var saved: SleepPolicy?
-        let controller = PolicyController(policy: SleepPolicy(onAC: true, onBattery: true),
+        let controller = PolicyController(policy: SleepPolicy(isEnabled: true, onAC: true, onBattery: true),
                                           sleep: session, onACPower: { onAC }, persist: { saved = $0 })
         try controller.reconcile()
         XCTAssertTrue(power.awake)
@@ -188,13 +188,13 @@ final class SleepControlTests: XCTestCase {
         try controller.setEnabled(true)
         XCTAssertTrue(power.awake)
         XCTAssertTrue(journal.pending)
-        XCTAssertEqual(saved, SleepPolicy(onAC: true, onBattery: true))
+        XCTAssertEqual(saved, SleepPolicy(isEnabled: true, onAC: true, onBattery: true))
     }
 
     func testMasterOnUsesTheCurrentPowerSourceWithoutOverridingSavedChoices() throws {
         let sleep = FakeSleep()
         var onAC = true
-        let controller = PolicyController(policy: SleepPolicy(isEnabled: false, onAC: true),
+        let controller = PolicyController(policy: SleepPolicy(isEnabled: false, onAC: true, onBattery: false),
                                           sleep: sleep, onACPower: { onAC }, persist: { _ in })
         // The source can change while the master-enable action waits in the queue.
         onAC = false
@@ -210,7 +210,7 @@ final class SleepControlTests: XCTestCase {
 
     func testSavedMasterOffRemainsOffAfterRelaunch() throws {
         let sleep = FakeSleep()
-        var saved = SleepPolicy(onAC: true, onBattery: true)
+        var saved = SleepPolicy(isEnabled: true, onAC: true, onBattery: true)
         let controller = PolicyController(policy: saved, sleep: sleep, onACPower: { true }, persist: { saved = $0 })
         try controller.setEnabled(false)
         let relaunched = PolicyController(policy: saved, sleep: sleep, onACPower: { false }, persist: { _ in })
@@ -225,7 +225,7 @@ final class SleepControlTests: XCTestCase {
                 let sleep = FakeSleep()
                 sleep.awake = enabled
                 sleep.failure = error
-                let original = SleepPolicy(isEnabled: enabled, onAC: true)
+                let original = SleepPolicy(isEnabled: enabled, onAC: true, onBattery: false)
                 var saved = [SleepPolicy]()
                 let controller = PolicyController(policy: original, sleep: sleep, onACPower: { true }, persist: { saved.append($0) })
                 XCTAssertThrowsError(try controller.setEnabled(!enabled))
@@ -245,12 +245,183 @@ final class SleepControlTests: XCTestCase {
         let sleep = FakeSleep()
         sleep.failure = ControlError.message("No power command should run")
         var saved: SleepPolicy?
-        let controller = PolicyController(policy: SleepPolicy(isEnabled: false), sleep: sleep,
+        let controller = PolicyController(policy: SleepPolicy(isEnabled: false, onAC: false, onBattery: false), sleep: sleep,
                                           onACPower: { true }, persist: { saved = $0 })
         try controller.toggle(onAC: true)
         try controller.toggle(onAC: false)
         XCTAssertEqual(saved, SleepPolicy(isEnabled: false, onAC: true, onBattery: true))
         XCTAssertTrue(sleep.writes.isEmpty)
+    }
+
+    // MARK: - The switch needs a condition
+
+    private func invariantHolds(_ policy: SleepPolicy) -> Bool { !policy.isEnabled || policy.onAC || policy.onBattery }
+
+    func testFreshInstallPolicyIsOffWithBothConditionsChecked() {
+        XCTAssertEqual(SleepPolicy(), SleepPolicy(isEnabled: false, onAC: true, onBattery: true))
+    }
+
+    func testNormalizedOnAllEightStates() {
+        for enabled in [false, true] {
+            for onAC in [false, true] {
+                for onBattery in [false, true] {
+                    let state = SleepPolicy(isEnabled: enabled, onAC: onAC, onBattery: onBattery)
+                    if enabled && !onAC && !onBattery {
+                        XCTAssertEqual(state.normalized, SleepPolicy())
+                    } else {
+                        XCTAssertEqual(state.normalized, state)
+                    }
+                    XCTAssertTrue(invariantHolds(state.normalized))
+                }
+            }
+        }
+    }
+
+    func testControllerInitNormalizesEnabledWithNoCondition() throws {
+        let sleep = FakeSleep()
+        let controller = PolicyController(policy: SleepPolicy(isEnabled: true, onAC: false, onBattery: false),
+                                          sleep: sleep, onACPower: { true }, persist: { _ in })
+        XCTAssertEqual(controller.policy, SleepPolicy(isEnabled: false, onAC: true, onBattery: true))
+        try controller.reconcile()
+        XCTAssertFalse(sleep.awake)
+    }
+
+    func testControllerInitKeepsSavedOffWithNoConditionAndSavedKeepAwakeStates() {
+        let states = [SleepPolicy(isEnabled: false, onAC: false, onBattery: false),
+                      SleepPolicy(isEnabled: true, onAC: true, onBattery: false),
+                      SleepPolicy(isEnabled: true, onAC: false, onBattery: true),
+                      SleepPolicy(isEnabled: true, onAC: true, onBattery: true)]
+        for state in states {
+            let controller = PolicyController(policy: state, sleep: FakeSleep(), onACPower: { true }, persist: { _ in })
+            XCTAssertEqual(controller.policy, state)
+        }
+    }
+
+    func testTurningTheSwitchOnWithNoConditionChecksBoth() throws {
+        let sleep = FakeSleep()
+        var saved: SleepPolicy?
+        let controller = PolicyController(policy: SleepPolicy(isEnabled: false, onAC: false, onBattery: false),
+                                          sleep: sleep, onACPower: { true }, persist: { saved = $0 })
+        try controller.setEnabled(true)
+        XCTAssertEqual(controller.policy, SleepPolicy(isEnabled: true, onAC: true, onBattery: true))
+        XCTAssertEqual(saved, controller.policy)
+        XCTAssertEqual(sleep.writes, [true])
+    }
+
+    func testTurningTheSwitchOnWithAConditionLeavesConditionsUnchanged() throws {
+        let sleep = FakeSleep()
+        let controller = PolicyController(policy: SleepPolicy(isEnabled: false, onAC: true, onBattery: false),
+                                          sleep: sleep, onACPower: { true }, persist: { _ in })
+        try controller.setEnabled(true)
+        XCTAssertEqual(controller.policy, SleepPolicy(isEnabled: true, onAC: true, onBattery: false))
+    }
+
+    func testUncheckingTheLastConditionTurnsTheSwitchOffAndRestoresSleep() throws {
+        let sleep = FakeSleep()
+        var saved: SleepPolicy?
+        let controller = PolicyController(policy: SleepPolicy(isEnabled: true, onAC: true, onBattery: false),
+                                          sleep: sleep, onACPower: { true }, persist: { saved = $0 })
+        try controller.reconcile()
+        XCTAssertTrue(sleep.awake)
+        try controller.toggle(onAC: true)
+        XCTAssertEqual(controller.policy, SleepPolicy(isEnabled: false, onAC: false, onBattery: false))
+        XCTAssertEqual(saved, controller.policy)
+        XCTAssertFalse(sleep.awake)
+        XCTAssertEqual(sleep.writes, [true, false])
+    }
+
+    func testUncheckingOneOfTwoConditionsKeepsTheSwitchOn() throws {
+        let sleep = FakeSleep()
+        let controller = PolicyController(policy: SleepPolicy(isEnabled: true, onAC: true, onBattery: true),
+                                          sleep: sleep, onACPower: { true }, persist: { _ in })
+        try controller.toggle(onAC: false)
+        XCTAssertEqual(controller.policy, SleepPolicy(isEnabled: true, onAC: true, onBattery: false))
+    }
+
+    func testUncheckingTheLastConditionOfTheInactiveSourceTurnsOffWithoutASleepWrite() throws {
+        let sleep = FakeSleep()
+        sleep.failure = ControlError.message("No power command should run")
+        var saved: SleepPolicy?
+        let controller = PolicyController(policy: SleepPolicy(isEnabled: true, onAC: false, onBattery: true),
+                                          sleep: sleep, onACPower: { true }, persist: { saved = $0 })
+        try controller.toggle(onAC: false)
+        XCTAssertEqual(saved, SleepPolicy(isEnabled: false, onAC: false, onBattery: false))
+        XCTAssertEqual(controller.policy, saved)
+        XCTAssertTrue(sleep.writes.isEmpty)
+    }
+
+    func testConditionEditedWhileOffStaysOffEvenWhenNoneIsChecked() throws {
+        let sleep = FakeSleep()
+        sleep.failure = ControlError.message("No power command should run")
+        let controller = PolicyController(policy: SleepPolicy(), sleep: sleep, onACPower: { true }, persist: { _ in })
+        try controller.toggle(onAC: true)
+        try controller.toggle(onAC: false)
+        XCTAssertEqual(controller.policy, SleepPolicy(isEnabled: false, onAC: false, onBattery: false))
+        XCTAssertTrue(sleep.writes.isEmpty)
+    }
+
+    func testFailedSleepWriteInACombinedTransitionKeepsPolicyAndSavedValues() throws {
+        for error in [ControlError.canceled, .message("sudo failed")] {
+            let sleep = FakeSleep()
+            var saved = [SleepPolicy]()
+            let uncheck = PolicyController(policy: SleepPolicy(isEnabled: true, onAC: true, onBattery: false),
+                                           sleep: sleep, onACPower: { true }, persist: { saved.append($0) })
+            try uncheck.reconcile()
+            sleep.failure = error
+            XCTAssertThrowsError(try uncheck.toggle(onAC: true))
+            XCTAssertEqual(uncheck.policy, SleepPolicy(isEnabled: true, onAC: true, onBattery: false))
+            XCTAssertTrue(saved.isEmpty)
+
+            let enable = PolicyController(policy: SleepPolicy(isEnabled: false, onAC: false, onBattery: false),
+                                          sleep: sleep, onACPower: { true }, persist: { saved.append($0) })
+            XCTAssertThrowsError(try enable.setEnabled(true))
+            XCTAssertEqual(enable.policy, SleepPolicy(isEnabled: false, onAC: false, onBattery: false))
+            XCTAssertTrue(saved.isEmpty)
+        }
+    }
+
+    func testSavedOffWithNoConditionRemainsOffAfterRelaunchAndTurnsOnWithBoth() throws {
+        let sleep = FakeSleep()
+        var saved = SleepPolicy()
+        let controller = PolicyController(policy: SleepPolicy(isEnabled: true, onAC: true, onBattery: false),
+                                          sleep: sleep, onACPower: { true }, persist: { saved = $0 })
+        try controller.toggle(onAC: true)
+        let relaunched = PolicyController(policy: saved, sleep: sleep, onACPower: { true }, persist: { saved = $0 })
+        try relaunched.reconcile()
+        XCTAssertEqual(relaunched.policy, SleepPolicy(isEnabled: false, onAC: false, onBattery: false))
+        XCTAssertFalse(sleep.awake)
+        try relaunched.setEnabled(true)
+        XCTAssertEqual(saved, SleepPolicy(isEnabled: true, onAC: true, onBattery: true))
+    }
+
+    func testEveryTransitionKeepsTheInvariant() throws {
+        enum Action { case enable, disable, ac, battery }
+        let actions: [Action] = [.enable, .disable, .ac, .battery]
+        for enabled in [false, true] {
+            for onAC in [false, true] {
+                for onBattery in [false, true] {
+                    for source in [false, true] {
+                        for first in actions {
+                            for second in actions {
+                                let controller = PolicyController(
+                                    policy: SleepPolicy(isEnabled: enabled, onAC: onAC, onBattery: onBattery),
+                                    sleep: FakeSleep(), onACPower: { source }, persist: { _ in })
+                                XCTAssertTrue(invariantHolds(controller.policy))
+                                for action in [first, second] {
+                                    switch action {
+                                    case .enable: try controller.setEnabled(true)
+                                    case .disable: try controller.setEnabled(false)
+                                    case .ac: try controller.toggle(onAC: true)
+                                    case .battery: try controller.toggle(onAC: false)
+                                    }
+                                    XCTAssertTrue(invariantHolds(controller.policy))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     func testWorkerRestoresOnParentEOF() throws {

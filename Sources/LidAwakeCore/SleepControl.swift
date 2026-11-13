@@ -170,12 +170,14 @@ public struct SleepPolicy: Codable, Equatable {
     public var isEnabled: Bool
     public var onAC: Bool
     public var onBattery: Bool
-    public init(isEnabled: Bool = true, onAC: Bool = false, onBattery: Bool = false) {
+    public init(isEnabled: Bool = false, onAC: Bool = true, onBattery: Bool = true) {
         self.isEnabled = isEnabled
         self.onAC = onAC
         self.onBattery = onBattery
     }
     public func desired(onACPower: Bool) -> Bool { isEnabled && (onACPower ? onAC : onBattery) }
+    /// The switch is ON only while a condition is checked; a state that breaks this is the fresh-install state.
+    public var normalized: SleepPolicy { isEnabled && !onAC && !onBattery ? SleepPolicy() : self }
 }
 
 /// Policy preferences commit only after a successful change for the active source.
@@ -188,7 +190,7 @@ public final class PolicyController {
 
     public init(policy: SleepPolicy, sleep: SleepControlling, onACPower: @escaping () -> Bool,
                 persist: @escaping (SleepPolicy) -> Void) {
-        self.policy = policy
+        self.policy = policy.normalized
         self.sleep = sleep
         self.onACPower = onACPower
         self.persist = persist
@@ -199,6 +201,7 @@ public final class PolicyController {
     public func setEnabled(_ enabled: Bool) throws {
         var candidate = policy
         candidate.isEnabled = enabled
+        if enabled && !candidate.onAC && !candidate.onBattery { candidate.onAC = true; candidate.onBattery = true }
         try sleep.setAwake(candidate.desired(onACPower: onACPower()))
         policy = candidate
         persist(candidate)
@@ -207,7 +210,9 @@ public final class PolicyController {
     public func toggle(onAC: Bool) throws {
         var candidate = policy
         if onAC { candidate.onAC.toggle() } else { candidate.onBattery.toggle() }
-        if candidate.isEnabled && onACPower() == onAC {
+        let wasEnabled = candidate.isEnabled
+        if !candidate.onAC && !candidate.onBattery { candidate.isEnabled = false }
+        if wasEnabled && onACPower() == onAC {
             try sleep.setAwake(candidate.desired(onACPower: onAC))
         }
         policy = candidate
