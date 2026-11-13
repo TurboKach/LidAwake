@@ -1,5 +1,24 @@
 import AppKit
 
+/// The compact title's cell. AppKit draws a label's text this far inside the cell's frame and reports a cell size
+/// that includes it on both sides, so a label framed to the string width would truncate and start its ink late.
+/// This cell removes that inset, so the frame is the text rectangle.
+private final class TitleCell: NSTextFieldCell {
+    private static let textInset: CGFloat = 2
+
+    override var cellSize: NSSize { Self.trimmed(super.cellSize) }
+    override func cellSize(forBounds rect: NSRect) -> NSSize { Self.trimmed(super.cellSize(forBounds: rect)) }
+    override func drawInterior(withFrame cellFrame: NSRect, in controlView: NSView) {
+        super.drawInterior(withFrame: cellFrame.insetBy(dx: -Self.textInset, dy: 0), in: controlView)
+    }
+
+    private static func trimmed(_ size: NSSize) -> NSSize { NSSize(width: size.width - 2 * textInset, height: size.height) }
+}
+
+private final class TitleField: NSTextField {
+    override class var cellClass: AnyClass? { get { TitleCell.self } set {} }
+}
+
 /// A persistent menu row with a native, accessible on/off switch. The regular layout is the two-line
 /// header; the compact layout is a one-line row that sits among standard rows and keeps the menu open.
 final class SwitchMenuRow: NSView {
@@ -19,7 +38,7 @@ final class SwitchMenuRow: NSView {
 
     let rowLayout: Layout
     private weak var item: NSMenuItem?
-    private let label = NSTextField(labelWithString: "")
+    private let label: NSTextField
     private let subtitleLabel = NSTextField(labelWithString: "")
     private let statusIcon = NSImageView()
     let toggle = NSSwitch()
@@ -29,6 +48,7 @@ final class SwitchMenuRow: NSView {
     init(item: NSMenuItem, layout: Layout = .regular) {
         self.item = item
         self.rowLayout = layout
+        self.label = layout == .compact ? TitleField(labelWithString: "") : NSTextField(labelWithString: "")
         super.init(frame: NSRect(x: 0, y: 0, width: 280, height: layout == .compact ? Compact.height : 64))
         autoresizingMask = [.width]
         if layout == .compact { setUpCompact() } else { setUpRegular() }

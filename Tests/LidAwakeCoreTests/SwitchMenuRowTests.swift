@@ -234,6 +234,57 @@ final class SwitchMenuRowTests: XCTestCase {
         }
     }
 
+    /// The x (points) of the first column with ink, on a 2x bitmap; nil if nothing is drawn.
+    private func firstInkColumn(in size: NSSize, draw: (NSRect) -> Void) -> CGFloat? {
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size.width * 2), pixelsHigh: Int(size.height * 2),
+                                         bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                         colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return nil }
+        rep.size = size
+        guard let context = NSGraphicsContext(bitmapImageRep: rep) else { return nil }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        draw(NSRect(origin: .zero, size: size))
+        NSGraphicsContext.restoreGraphicsState()
+        for x in 0..<rep.pixelsWide {
+            for y in 0..<rep.pixelsHigh where (rep.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.1 { return CGFloat(x) / 2 }
+        }
+        return nil
+    }
+
+    private func firstInkColumn(of label: NSTextField) -> CGFloat? {
+        firstInkColumn(in: label.frame.size) { bounds in label.cell?.draw(withFrame: bounds, in: label) }
+    }
+
+    private func firstInkColumn(ofPlain title: String, font: NSFont) -> CGFloat? {
+        firstInkColumn(in: NSSize(width: 600, height: 24)) { _ in (title as NSString).draw(at: .zero, withAttributes: [.font: font]) }
+    }
+
+    func testCompactTitleIsDrawnWholeAtTheDesignPosition() throws {
+        let target = Target(), menu = NSMenu()
+        menu.autoenablesItems = false
+        let renderer = StableMenu(menu: menu)
+        let titles = ["Connected to Power", "On Battery", "При питании от сети", "При питании от батареи",
+                      "A considerably longer synthetic condition title that is not translated anywhere"]
+        renderer.update(titles.enumerated().map { compactEntry(id: "row\($0.offset)", title: $0.element, on: true) },
+                        target: target)
+        for (index, title) in titles.enumerated() {
+            let row = try compactRow(menu, at: index)
+            let (label, _) = try subviews(of: row)
+            let cell = try XCTUnwrap(label.cell)
+            for width in [row.frame.width, row.frame.width + 80] {
+                layOut(row, width: width)
+                // The cell needs this much to draw the whole string; the frame must offer it.
+                XCTAssertGreaterThanOrEqual(label.frame.width, ceil(cell.cellSize.width), title)
+                XCTAssertGreaterThanOrEqual(row.toggle.frame.minX - label.frame.maxX, 16, title)
+                // The ink starts where the same string drawn plainly at the design x would start.
+                let designX: CGFloat = 24 + 12 + 19 + 6.5
+                let drawn = try XCTUnwrap(firstInkColumn(of: label)) + label.frame.minX
+                let plain = try XCTUnwrap(firstInkColumn(ofPlain: title, font: try XCTUnwrap(label.font))) + designX
+                XCTAssertEqual(drawn, plain, accuracy: 0.5, title)
+            }
+        }
+    }
+
     func testCompactInsetFollowsTheStateColumnOfTheMenu() throws {
         let target = Target(), menu = NSMenu()
         menu.autoenablesItems = false
