@@ -5,7 +5,8 @@ BINARY="LidAwake.app/Contents/MacOS/LidAwake"
 plutil -lint LidAwake.app/Contents/Info.plist
 codesign --verify --strict LidAwake.app
 if [ "${1:-}" = universal ]; then
-    lipo "$BINARY" -verify_arch arm64 x86_64
+    lipo "$BINARY" -verify_arch arm64
+    lipo "$BINARY" -verify_arch x86_64
 fi
 MINIMUM=$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' Info.plist)
 for arch in $(lipo -archs "$BINARY"); do
