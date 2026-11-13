@@ -84,4 +84,184 @@ final class SwitchMenuRowTests: XCTestCase {
         XCTAssertTrue(menu.performKeyEquivalent(with: event))
         XCTAssertEqual(calls, 1)
     }
+
+    // MARK: Compact layout
+
+    private func compactEntry(id: String = "ac", title: String = "Connected to Power", on: Bool, enabled: Bool = true,
+                              symbol: String? = "powerplug.fill", indentationLevel: Int = 1) -> MenuEntry {
+        MenuEntry(id: id, title: title, action: #selector(Target.toggle), state: on ? .on : .off, enabled: enabled,
+                  indentationLevel: indentationLevel, style: .compactToggle, symbol: symbol)
+    }
+
+    private func compactRow(_ menu: NSMenu, at index: Int = 0) throws -> SwitchMenuRow {
+        let row = try XCTUnwrap(menu.items[index].view as? SwitchMenuRow)
+        XCTAssertEqual(row.rowLayout, .compact)
+        return row
+    }
+
+    private func subviews(of row: SwitchMenuRow) throws -> (label: NSTextField, icon: NSImageView) {
+        (try XCTUnwrap(row.subviews.compactMap { $0 as? NSTextField }.first),
+         try XCTUnwrap(row.subviews.compactMap { $0 as? NSImageView }.first))
+    }
+
+    private func layOut(_ row: SwitchMenuRow, width: CGFloat? = nil) {
+        if let width = width { row.setFrameSize(NSSize(width: width, height: row.frame.height)) }
+        row.needsLayout = true
+        row.layoutSubtreeIfNeeded()
+    }
+
+    func testCompactEntryGetsACompactRowWithoutMenuImage() throws {
+        let target = Target(), menu = NSMenu()
+        menu.autoenablesItems = false
+        let renderer = StableMenu(menu: menu)
+        renderer.update([compactEntry(on: true)], target: target)
+        let row = try compactRow(menu)
+        XCTAssertNil(menu.items[0].image)
+        XCTAssertEqual(row.toggle.controlSize, .small)
+        XCTAssertEqual(row.toggle.accessibilityLabel(), "Connected to Power")
+        XCTAssertEqual(row.toggle.state, .on)
+        XCTAssertTrue(row.toggle.isEnabled)
+        XCTAssertEqual(row.frame.height, 24)
+        XCTAssertEqual(row.subviews.compactMap { $0 as? NSImageView }.count, 1)
+        renderer.update([compactEntry(on: false, enabled: false)], target: target)
+        XCTAssertEqual(row.toggle.state, .off)
+        XCTAssertFalse(row.toggle.isEnabled)
+    }
+
+    func testCompactRowStaysStableAcrossPolls() throws {
+        let target = Target(), menu = NSMenu()
+        menu.autoenablesItems = false
+        let renderer = StableMenu(menu: menu)
+        renderer.update([compactEntry(on: true)], target: target)
+        let item = menu.items[0]
+        let row = try compactRow(menu)
+        let (_, icon) = try subviews(of: row)
+        let image = try XCTUnwrap(icon.image)
+        let frame = row.frame
+        var notifications = 0
+        let observer = NotificationCenter.default.addObserver(forName: NSMenu.didChangeItemNotification,
+                                                              object: menu, queue: nil) { _ in notifications += 1 }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        for _ in 0..<5 { renderer.update([compactEntry(on: true)], target: target) }
+        XCTAssertTrue(item.view === row)
+        XCTAssertEqual(row.frame, frame)
+        XCTAssertEqual(notifications, 0)
+        XCTAssertTrue(icon.image === image)
+    }
+
+    func testCompactClickKeepsRequestedPositionAndRollsBackOrConfirms() throws {
+        _ = NSApplication.shared
+        let target = Target(), menu = NSMenu()
+        menu.autoenablesItems = false
+        let renderer = StableMenu(menu: menu)
+        renderer.update([compactEntry(on: true)], target: target)
+        let row = try compactRow(menu)
+        var calls = 0
+        target.change = {
+            calls += 1
+            renderer.update([self.compactEntry(on: true, enabled: false)], target: target)
+        }
+        row.toggle.performClick(nil)
+        XCTAssertEqual(calls, 1)
+        XCTAssertEqual(row.toggle.state, .off)
+        XCTAssertFalse(row.toggle.isEnabled)
+        // The state did not change: roll back.
+        renderer.update([compactEntry(on: true)], target: target)
+        XCTAssertEqual(row.toggle.state, .on)
+        XCTAssertTrue(row.toggle.isEnabled)
+        // The state changed: confirm.
+        row.toggle.performClick(nil)
+        XCTAssertEqual(calls, 2)
+        renderer.update([compactEntry(on: false)], target: target)
+        XCTAssertEqual(row.toggle.state, .off)
+        XCTAssertEqual(calls, 2)
+    }
+
+    func testDisabledCompactRowSendsNoAction() throws {
+        _ = NSApplication.shared
+        let target = Target(), menu = NSMenu()
+        menu.autoenablesItems = false
+        let renderer = StableMenu(menu: menu)
+        renderer.update([compactEntry(on: true, enabled: false)], target: target)
+        let row = try compactRow(menu)
+        var calls = 0
+        target.change = { calls += 1 }
+        row.toggle.performClick(nil)
+        XCTAssertEqual(calls, 0)
+        XCTAssertEqual(row.toggle.state, .on)
+    }
+
+    func testCompactRowThatStaysDisabledAfterItsClickShowsTheLaterEnabledState() throws {
+        _ = NSApplication.shared
+        let target = Target(), menu = NSMenu()
+        menu.autoenablesItems = false
+        let renderer = StableMenu(menu: menu)
+        renderer.update([compactEntry(on: true)], target: target)
+        let row = try compactRow(menu)
+        // The last condition turned off: the row is disabled with state off.
+        target.change = { renderer.update([self.compactEntry(on: false, enabled: false)], target: target) }
+        row.toggle.performClick(nil)
+        XCTAssertEqual(row.toggle.state, .off)
+        XCTAssertFalse(row.toggle.isEnabled)
+        renderer.update([compactEntry(on: true)], target: target)
+        XCTAssertEqual(row.toggle.state, .on)
+        XCTAssertTrue(row.toggle.isEnabled)
+    }
+
+    func testCompactTitleNeverRunsUnderTheSwitch() throws {
+        let target = Target(), menu = NSMenu()
+        menu.autoenablesItems = false
+        let renderer = StableMenu(menu: menu)
+        let titles = ["При питании от батареи", "A considerably longer synthetic condition title that is not translated anywhere"]
+        renderer.update(titles.enumerated().map { compactEntry(id: "row\($0.offset)", title: $0.element, on: true) },
+                        target: target)
+        for index in 0..<titles.count {
+            let row = try compactRow(menu, at: index)
+            let (label, _) = try subviews(of: row)
+            let textWidth = ceil((titles[index] as NSString).size(withAttributes: [.font: NSFont.menuFont(ofSize: 0)]).width)
+            XCTAssertEqual(row.frame.height, 24)
+            // Natural width, and a menu that stretched the row wider.
+            let natural = row.frame.width
+            for width in [natural, natural + 80] {
+                layOut(row, width: width)
+                XCTAssertGreaterThanOrEqual(label.frame.width, textWidth)
+                XCTAssertGreaterThanOrEqual(row.toggle.frame.minX - label.frame.maxX, 16)
+                XCTAssertGreaterThanOrEqual(row.frame.width, label.frame.maxX + 16 + row.toggle.frame.width)
+            }
+            // Last resort: a row narrower than it needs truncates the title instead of running under the switch.
+            layOut(row, width: natural - 60)
+            XCTAssertGreaterThanOrEqual(row.toggle.frame.minX - label.frame.maxX, 16)
+        }
+    }
+
+    func testCompactInsetFollowsTheStateColumnOfTheMenu() throws {
+        let target = Target(), menu = NSMenu()
+        menu.autoenablesItems = false
+        let renderer = StableMenu(menu: menu)
+        func entries(_ state: NSControl.StateValue) -> [MenuEntry] {
+            [MenuEntry(id: "other", title: "Other", action: #selector(Target.toggle), state: state),
+             MenuEntry(id: "ac", title: "Connected to Power", action: #selector(Target.toggle), indentationLevel: 0,
+                       style: .compactToggle)]
+        }
+        // A row created in a pass gets that pass's value.
+        renderer.update(entries(.on), target: target)
+        let row = try compactRow(menu, at: 1)
+        let (label, _) = try subviews(of: row)
+        layOut(row)
+        XCTAssertEqual(label.frame.minX, 24)
+        renderer.update(entries(.off), target: target)
+        layOut(row)
+        XCTAssertEqual(label.frame.minX, 16)
+        renderer.update(entries(.mixed), target: target)
+        layOut(row)
+        XCTAssertEqual(label.frame.minX, 24)
+        // A fresh menu without any state starts at 16.
+        let other = NSMenu()
+        other.autoenablesItems = false
+        let fresh = StableMenu(menu: other)
+        fresh.update(entries(.off), target: target)
+        let freshRow = try compactRow(other, at: 1)
+        layOut(freshRow)
+        XCTAssertEqual(try subviews(of: freshRow).label.frame.minX, 16)
+    }
 }

@@ -91,4 +91,52 @@ final class StableMenuTests: XCTestCase {
         XCTAssertTrue(menu.items[0] === original[0])
         XCTAssertTrue(menu.items[1] === original[1])
     }
+
+    func testCompactAndStandardRowsKeepOneImagePerSymbolAndSize() throws {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        let renderer = StableMenu(menu: menu)
+        let entries = [
+            MenuEntry(id: "compact", title: "Connected to Power", action: action, style: .compactToggle, symbol: "powerplug.fill"),
+            MenuEntry(id: "standard", title: "Plug", action: action, symbol: "powerplug.fill")
+        ]
+        func size(_ points: CGFloat) -> NSSize? {
+            NSImage(systemSymbolName: "powerplug.fill", accessibilityDescription: nil)?
+                .withSymbolConfiguration(.init(pointSize: points, weight: .regular))?.size
+        }
+        renderer.update(entries, target: self)
+        let row = try XCTUnwrap(menu.items[0].view as? SwitchMenuRow)
+        let compactImage = try XCTUnwrap(row.subviews.compactMap { $0 as? NSImageView }.first?.image)
+        let standardImage = try XCTUnwrap(menu.items[1].image)
+        XCTAssertNil(menu.items[0].image)
+        XCTAssertNotNil(size(11))
+        XCTAssertEqual(compactImage.size, size(11))
+        XCTAssertEqual(standardImage.size, size(14))
+        XCTAssertFalse(compactImage === standardImage)
+        // A changed entry forces a real pass.
+        let changed = [entries[0], MenuEntry(id: "standard", title: "Plug 2", action: action, symbol: "powerplug.fill")]
+        for _ in 0..<2 { renderer.update(changed, target: self) }
+        XCTAssertTrue(row.subviews.compactMap { $0 as? NSImageView }.first?.image === compactImage)
+        XCTAssertTrue(menu.items[1].image === standardImage)
+    }
+
+    func testStyleChangeForOneIdReplacesTheRowWithTheRightLayout() throws {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        let renderer = StableMenu(menu: menu)
+        func entries(_ style: MenuEntry.Style) -> [MenuEntry] {
+            [MenuEntry(id: "row", title: "Row", action: action, style: style, symbol: "powerplug.fill")]
+        }
+        renderer.update(entries(.toggle), target: self)
+        let regular = try XCTUnwrap(menu.items[0].view as? SwitchMenuRow)
+        XCTAssertEqual(regular.rowLayout, .regular)
+        renderer.update(entries(.compactToggle), target: self)
+        let compact = try XCTUnwrap(menu.items[0].view as? SwitchMenuRow)
+        XCTAssertEqual(compact.rowLayout, .compact)
+        XCTAssertFalse(compact === regular)
+        renderer.update(entries(.toggle), target: self)
+        XCTAssertEqual((menu.items[0].view as? SwitchMenuRow)?.rowLayout, .regular)
+        renderer.update(entries(.standard), target: self)
+        XCTAssertNil(menu.items[0].view)
+    }
 }

@@ -1,7 +1,7 @@
 import AppKit
 
 public struct MenuEntry: Equatable {
-    public enum Style { case standard, toggle }
+    public enum Style { case standard, toggle, compactToggle }
     public let id: String
     let title: String
     let action: Selector?
@@ -47,6 +47,7 @@ public final class StableMenu {
     public func update(_ entries: [MenuEntry], target: AnyObject) {
         guard self.entries != entries || self.target !== target else { return }
         let wanted = Set(entries.map(\.id))
+        let hasStateColumn = entries.contains { $0.state != .off }
         for id in Array(items.keys) where !wanted.contains(id) {
             if let item = items.removeValue(forKey: id) { menu.removeItem(item) }
         }
@@ -70,21 +71,26 @@ public final class StableMenu {
             if item.state != entry.state { item.state = entry.state }
             if item.isEnabled != entry.enabled { item.isEnabled = entry.enabled }
             if item.indentationLevel != entry.indentationLevel { item.indentationLevel = entry.indentationLevel }
+            let compact = entry.style == .compactToggle
+            let pointSize: CGFloat = compact ? 11 : 14
             let icon = entry.symbol.flatMap { name -> NSImage? in
-                if let existing = images[name] { return existing }
+                let key = "\(name)@\(pointSize)"
+                if let existing = images[key] { return existing }
                 let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
-                    .withSymbolConfiguration(.init(pointSize: 14, weight: .regular))
+                    .withSymbolConfiguration(.init(pointSize: pointSize, weight: .regular))
                 image?.isTemplate = true
-                images[name] = image
+                images[key] = image
                 return image
             }
-            if entry.style == .toggle {
+            if entry.style != .standard {
+                let layout: SwitchMenuRow.Layout = compact ? .compact : .regular
                 let row: SwitchMenuRow
-                if let existing = item.view as? SwitchMenuRow { row = existing }
+                if let existing = item.view as? SwitchMenuRow, existing.rowLayout == layout { row = existing }
                 else {
-                    row = SwitchMenuRow(item: item)
+                    row = SwitchMenuRow(item: item, layout: layout)
                     item.view = row
                 }
+                row.hasStateColumn = hasStateColumn
                 if item.image != nil { item.image = nil }
                 row.updateStatus(subtitle: entry.subtitle, image: icon)
                 row.update()
