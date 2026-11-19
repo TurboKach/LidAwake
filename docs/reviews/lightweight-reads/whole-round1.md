@@ -1,0 +1,14 @@
+# codex challenge — range 6fbe61f0ab57f1e3a83b4582c30f853b810b008d..85d327214c87db0a269e419c2b04195a95b71909 — checkout /Users/turbokach/Dev/LidAwake — model gpt-6.2-sol/medium — exit 0 — 100s
+[Sources/LidAwakeCore/SleepControl.swift:186](/Users/turbokach/Dev/LidAwake/Sources/LidAwakeCore/SleepControl.swift:186) — On macOS 27, delay an enable past the two-second settle deadline and quit before it applies. Recovery sees the old `0`, clears the journal, and exits. The queued `1` can then land with no recovery obligation.
+
+[Sources/LidAwakeCore/SleepWorker.swift:130](/Users/turbokach/Dev/LidAwake/Sources/LidAwakeCore/SleepWorker.swift:130) — Quit can report success while the kernel still has sleep disabled. After a restore times out with `pmset -g` already at `0` and the registry still at `1`, retry Quit. `stop()` clears the journal without another restore, and the client ignores the worker’s `awake: true` reply.
+
+[Sources/LidAwakeCore/SleepControl.swift:169](/Users/turbokach/Dev/LidAwake/Sources/LidAwakeCore/SleepControl.swift:169) — An enabled policy can stop retrying while the kernel still allows sleep. Let an enable time out with `pmset -g` at `1` and the registry stuck at `0`. Every subsequent reconcile skips the write and clears the operation error, leaving the Mac free to sleep on lid close.
+
+[Sources/LidAwakeCore/SleepControl.swift:110](/Users/turbokach/Dev/LidAwake/Sources/LidAwakeCore/SleepControl.swift:110) — One unreadable registry sample ends the settle loop, even after an earlier sample showed the old value. If `pmset -g` already shows the requested value, the write reports success and policy preferences commit before the kernel applies it.
+
+[Sources/LidAwakeCore/SleepWorker.swift:172](/Users/turbokach/Dev/LidAwake/Sources/LidAwakeCore/SleepWorker.swift:172) — A first enable can disconnect a healthy worker and force an app relaunch. Eight commands totaling 63 seconds plus two 1.2-second registry settles exceed the 65-second reply deadline even though every individual operation succeeds within its own limit.
+
+[LidAwake.swift:232](/Users/turbokach/Dev/LidAwake/LidAwake.swift:232) — Reopen the lid while a closed-lid tick is waiting for keep-awake to settle. The tick uses the earlier lid state and can run `displaysleepnow` after reopening, blanking the active screen.
+
+[Sources/LidAwakeCore/SleepControl.swift:109](/Users/turbokach/Dev/LidAwake/Sources/LidAwakeCore/SleepControl.swift:109) — A backward wall-clock adjustment during a stuck settle extends the two-second deadline by the size of the adjustment. The worker can hold the session lock and block Quit, crash recovery, and relaunch long after the client times out.
