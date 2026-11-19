@@ -23,4 +23,5 @@ One line per item, context in the linked file. Product ideas live in `TODO.md`.
 - **Localize the remaining English-only texts** — Core's ~40 error texts, 4 admin-script `echo` lines and the Automation usage description have no Russian; own arc → docs/todos/localize-remaining-english-texts.md
 - **Arc B review close-out** — 2 theoretical leftovers of "no timeout" (power changes not applied, Quit waits, while a password dialog is unanswered) → docs/todos/arc-b-close-out.md
 - **Worker memory-leak review close-out** — 1 test gap, 3 new theoretical leftovers (unbounded `readLine`, post-stop status read, capture dir after a kill) → docs/todos/worker-leak-close-out.md
+- **`swift test` fails while `LidAwake.app` is in the repo root** — "defaultLocalization not set" although Package.swift excludes it; move the bundle first → docs/todos/swift-test-fails-with-built-app.md
 - **`swift build` warns about unhandled root files** — Package.swift's exclude list lacks `CLAUDE.md` and `CLAUDE.local.md`; warning only → docs/todos/swiftpm-unhandled-files-warning.md
