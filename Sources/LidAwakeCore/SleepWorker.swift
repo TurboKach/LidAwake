@@ -46,22 +46,28 @@ public enum SleepWorker {
         }
         _ = respond { try session.recover() }
         while let line = receive() {
-            guard line.utf8.count < 1024,
-                  let request = try? JSONDecoder().decode(WorkerRequest.self, from: Data(line.utf8)) else {
-                reply(WorkerReply(awake: nil, error: "Invalid sleep request."))
-                continue
-            }
-            switch request.operation {
-            case .status:
-                _ = respond { try session.recover() }
-            case .set:
-                _ = respond {
-                    guard let value = request.awake else { throw ControlError.message("Missing sleep setting.") }
-                    try session.setAwake(value)
+            // This thread has no run loop to drain autoreleased objects (each command's
+            // Process, file handles, URLs, environment copy), so every request gets its own pool.
+            let stopped = autoreleasepool { () -> Bool in
+                guard line.utf8.count < 1024,
+                      let request = try? JSONDecoder().decode(WorkerRequest.self, from: Data(line.utf8)) else {
+                    reply(WorkerReply(awake: nil, error: "Invalid sleep request."))
+                    return false
                 }
-            case .shutdown:
-                if respond({ try session.stop() }) { return 0 }
+                switch request.operation {
+                case .status:
+                    _ = respond { try session.recover() }
+                case .set:
+                    _ = respond {
+                        guard let value = request.awake else { throw ControlError.message("Missing sleep setting.") }
+                        try session.setAwake(value)
+                    }
+                case .shutdown:
+                    return respond { try session.stop() }
+                }
+                return false
             }
+            if stopped { return 0 }
         }
         // No GUI remains to repair permissions. Try briefly, then leave the journal
         // for the next launch if the system no longer permits restoration.

@@ -455,4 +455,42 @@ final class SleepControlTests: XCTestCase {
         XCTAssertNil(replies[3].error)
         XCTAssertFalse(power.awake)
     }
+
+    /// The app polls the worker every 2 seconds for its whole lifetime, and each request
+    /// launches processes through the real runner, as `pmset -g` reads do.
+    func testWorkerMemoryStaysFlatAcrossManyRequests() throws {
+        let session = try SleepSession(settings: CommandPower(), journal: MemoryJournal())
+        func serve(_ count: Int) {
+            var remaining = count
+            _ = SleepWorker.serve(session: session, receive: {
+                remaining -= 1
+                return remaining >= 0 ? #"{"operation":"set","awake":false}"# : nil
+            }, reply: { XCTAssertNil($0.error) })
+        }
+        serve(20) // Warm-up: one-time allocations and malloc zone growth.
+        let before = physicalFootprint()
+        serve(300)
+        let growth = Int64(physicalFootprint()) - Int64(before)
+        XCTAssertLessThan(growth, 4 << 20, "Footprint grew \(growth >> 10) KB over 300 requests.")
+    }
+
+    private final class CommandPower: PowerSettings {
+        func read() throws -> Bool {
+            try PMSet.parse(ProcessCommandRunner().run("/bin/echo", ["SleepDisabled 0"], timeout: 5).stdout)
+        }
+        func requireAutomaticControl() throws {}
+        func write(_ awake: Bool) throws {}
+    }
+
+    private func physicalFootprint() -> UInt64 {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+        let result = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+            }
+        }
+        precondition(result == KERN_SUCCESS)
+        return info.phys_footprint
+    }
 }
