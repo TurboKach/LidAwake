@@ -1,0 +1,16 @@
+# codex challenge — range e4de2b821d01928bdbd335c1812548c61a41fd86..96cccf68edecea49f902c0c4d414fa7f75dfb9e5 — checkout /Users/turbokach/Dev/LidAwake — model gpt-6.2-sol/medium — exit 0 — 105s
+[Sources/LidAwakeCore/SleepWorker.swift:48](/Users/turbokach/Dev/LidAwake/Sources/LidAwakeCore/SleepWorker.swift:48) — `readLine()` buffers the entire request before the 1 KiB check runs. A writer that keeps streaming without a newline can exhaust worker memory while sleep is disabled, bypassing EOF restoration and leaving recovery to the next launch.
+
+[Sources/LidAwakeCore/SleepWorker.swift:172](/Users/turbokach/Dev/LidAwake/Sources/LidAwakeCore/SleepWorker.swift:172) — A first enable from sleep-enabled state can run nine serial commands, each allowed 10 seconds. If they take more than 65 seconds combined, the GUI disconnects while the worker is still changing power state, and subsequent polls fail until relaunch.
+
+[Sources/LidAwakeCore/SleepWorker.swift:138](/Users/turbokach/Dev/LidAwake/Sources/LidAwakeCore/SleepWorker.swift:138) — After a transport failure closes the client, a retried Quit treats any worker exit as successful restoration. If sudo permissions were revoked, the worker can exit with status 1 after three failed restore attempts while the GUI quits as though sleep was restored.
+
+[Sources/LidAwakeCore/SleepWorker.swift:40](/Users/turbokach/Dev/LidAwake/Sources/LidAwakeCore/SleepWorker.swift:40) — A transient status-read failure after `session.stop()` verified restoration and cleared the journal makes shutdown report failure. Repeated failures at that extra read leave the worker running and prevent normal Quit even though sleep is already restored.
+
+[Sources/LidAwakeCore/SleepControl.swift:156](/Users/turbokach/Dev/LidAwake/Sources/LidAwakeCore/SleepControl.swift:156) — If an external writer enables sleep between the session’s initial read and the permission probe’s read, and the probe then disables sleep but fails to restore it, `releaseClaim()` trusts the stale initial state and clears the journal. Quit and EOF then skip restoration.
+
+[Sources/LidAwakeCore/SleepControl.swift:80](/Users/turbokach/Dev/LidAwake/Sources/LidAwakeCore/SleepControl.swift:80) — With sleep already disabled, the probe checks only permission to write `1`. A sudo policy that denies writing `0` still passes, so the worker accepts an override it cannot restore on disable, Quit, or EOF.
+
+[Sources/LidAwakeCore/Commands.swift:38](/Users/turbokach/Dev/LidAwake/Sources/LidAwakeCore/Commands.swift:38) — Killing the worker during a polling command leaves its capture directory behind, and failed directory removal is ignored. Repeated crashes or cleanup failures accumulate temporary files despite the per-request pool.
+
+[Tests/LidAwakeCoreTests/SleepControlTests.swift:465](/Users/turbokach/Dev/LidAwake/Tests/LidAwakeCoreTests/SleepControlTests.swift:465) — The footprint test injects strings and discards replies in XCTest, so a leak in real pipe reads or reply writes can grow for hours in production while this test passes. The available test bundle hit the read-only sandbox’s temporary-file restriction, leaving the footprint result unverified.
