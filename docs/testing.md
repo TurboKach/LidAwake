@@ -87,6 +87,9 @@ admin/Automation approval; they are not part of the automated tests. On macOS 27
     read the menu, the Sleep Setup alert, the **Uninstall LidAwake…** alert (then choose
     Cancel), **Check for Updates…** and the About panel: every text must be in that
     language, with no English left in Russian and no text cut off.
+11. Soak the worker. Install the build, find the `--sleep-worker` PID, and record
+    `vmmap --summary <pid> | grep "Physical footprint"` after the 15-minute warm-up, then
+    again 30 or more minutes later. The second value must stay within about 1 MB of the first.
 
 After testing, quit the app and verify sleep is enabled. If both processes were killed
 and recovery cannot run, use `sudo pmset -a disablesleep 0` to restore sleep manually.

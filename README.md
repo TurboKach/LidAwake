@@ -41,11 +41,12 @@ that keeps the Mac awake today stays that way after the upgrade.
 ## How it works
 
 Toggles `pmset disablesleep` (`0` = sleep, `1` = stay awake) — one live, system-wide
-value, so LidAwake watches power changes and applies your per-source policy itself. It
-reads the value from `pmset -g`; on macOS 27, where that output no longer lists
-`SleepDisabled`, it reads the same value from the `IOPMrootDomain` registry entry. A
-single background worker owns these writes. On lid
-close it runs `pmset displaysleepnow` to blank the internal screen — and the external one
+value, so LidAwake watches power changes and applies your per-source policy itself. The
+status it shows comes from the `IOPMrootDomain` registry entry, which needs no process
+launch. Decisions and the check after each write use `pmset -g` (on macOS 27, where that
+output no longer lists `SleepDisabled`, the registry value instead). A write returns only
+once the kernel has applied it. A
+single background worker owns these writes. On lid close it runs `pmset displaysleepnow` to blank the internal screen — and the external one
 too, unless you keep clamshell mode on. Requires **macOS 12+**.
 
 > [!NOTE]

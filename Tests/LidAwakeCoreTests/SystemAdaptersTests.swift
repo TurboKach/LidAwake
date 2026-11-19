@@ -73,10 +73,105 @@ final class SystemAdaptersTests: XCTestCase {
     func testPMSetVerifiesTheActualWriteAndDoesNotUseCachedCredentials() throws {
         let runner = RecordingRunner()
         runner.respond = { args in CommandOutput(stdout: args == ["-g"] ? "SleepDisabled 0" : "") }
-        let pmset = PMSet(runner: runner, setup: PrivilegeSetup(runner: runner))
+        // The registry agrees with the write; only the fake `pmset -g` (always 0) rejects it.
+        let pmset = PMSet(runner: runner, setup: PrivilegeSetup(runner: runner), registryState: { true })
         XCTAssertThrowsError(try pmset.write(true))
         XCTAssertEqual(runner.calls[0].1, ["-n", "-k", "/usr/bin/pmset", "-a", "disablesleep", "1"])
         XCTAssertEqual(runner.calls[1].1, ["-g"])
+    }
+
+    private func pmset(_ runner: RecordingRunner, settleTimeout: TimeInterval = 2,
+                       registry: @escaping () throws -> Bool) -> PMSet {
+        PMSet(runner: runner, setup: PrivilegeSetup(runner: runner), registryState: registry, settleTimeout: settleTimeout)
+    }
+
+    func testCurrentStateReadsTheRegistryWithoutLaunchingAnything() throws {
+        let runner = RecordingRunner()
+        runner.respond = { _ in XCTFail("a reporting read must not launch a process"); return CommandOutput() }
+        for value in [true, false] {
+            XCTAssertEqual(try pmset(runner, registry: { value }).currentState(), value)
+        }
+        XCTAssertTrue(runner.calls.isEmpty)
+    }
+
+    func testCurrentStateFallsBackToPmsetAndNeverReportsEnabledWithoutAValue() throws {
+        let runner = RecordingRunner()
+        let unavailable: () throws -> Bool = { throw ControlError.message("registry unavailable") }
+        runner.respond = { _ in CommandOutput(stdout: " SleepDisabled 1\n") }
+        XCTAssertTrue(try pmset(runner, registry: unavailable).currentState())
+        XCTAssertEqual(runner.calls.map { $0.1 }, [["-g"]])
+        runner.respond = { _ in CommandOutput(stdout: "System-wide power settings:\n sleep 1\n") }
+        XCTAssertThrowsError(try pmset(runner, registry: unavailable).currentState())
+    }
+
+    func testWriteWaitsForTheRegistryToShowTheValueThenVerifiesWithPmset() throws {
+        let runner = RecordingRunner()
+        runner.respond = { args in CommandOutput(stdout: args == ["-g"] ? "SleepDisabled 1" : "") }
+        var polls = 0
+        try pmset(runner, registry: { polls += 1; return polls >= 3 }).write(true)
+        XCTAssertEqual(polls, 3)
+        XCTAssertEqual(runner.calls.map { $0.1.last! }, ["1", "-g"], "the sudo write, then one -g verification")
+    }
+
+    func testWriteFailsWhenTheRegistryNeverShowsTheValueWithinTheSettleTimeout() {
+        let runner = RecordingRunner()
+        runner.respond = { args in CommandOutput(stdout: args == ["-g"] ? "SleepDisabled 1" : "") }
+        XCTAssertThrowsError(try pmset(runner, settleTimeout: 0.1, registry: { false }).write(true)) {
+            XCTAssertEqual($0 as? ControlError, .message("macOS did not apply the sleep setting. Try Repair Sleep Setup."))
+        }
+        XCTAssertEqual(runner.calls.map { $0.1.last! }, ["1"], "no verification after a timed-out settle")
+    }
+
+    func testWriteDoesNotWaitWhenTheRegistryHasNoValue() throws {
+        let runner = RecordingRunner()
+        runner.respond = { args in CommandOutput(stdout: args == ["-g"] ? "SleepDisabled 1" : "") }
+        var polls = 0
+        try pmset(runner, settleTimeout: 0.1, registry: { polls += 1; throw ControlError.message("no value") }).write(true)
+        XCTAssertEqual(polls, 1)
+    }
+
+    /// stop() must restore from the decision read (`pmset -g`), not from the registry, which can lag.
+    func testStopRestoresFromThePmsetReadEvenWhenTheRegistryShowsEnabledSleep() throws {
+        let (runner, state) = pmsetRunner(startingAt: "1")
+        let journal = MemoryJournal()
+        journal.pending = true
+        let session = try SleepSession(settings: pmset(runner, registry: { false }), journal: journal)
+        var requests = [#"{"operation":"shutdown"}"#]
+        let result = SleepWorker.serve(session: session, receive: { requests.isEmpty ? nil : requests.removeFirst() }, reply: { _ in })
+        XCTAssertEqual(result, 0)
+        XCTAssertEqual(sudoWrites(runner), ["0"])
+        XCTAssertEqual(state(), "0")
+        XCTAssertFalse(journal.pending)
+    }
+
+    /// The probe's last step is a real `write(false)`, so a registry stuck at 1 must fail it.
+    func testProbeFailsWhenTheRegistryStaysEnabledAfterTheFinalRestore() {
+        let (runner, _) = pmsetRunner(startingAt: "0")
+        XCTAssertThrowsError(try pmset(runner, settleTimeout: 0.1, registry: { true }).probeRule()) {
+            XCTAssertEqual($0 as? ControlError, .message("macOS did not apply the sleep setting. Try Repair Sleep Setup."))
+        }
+        XCTAssertEqual(sudoWrites(runner), ["0", "1", "0"])
+    }
+
+    /// A tick is a `set` and a `status` request. Reporting reads come from the registry, so `status`
+    /// launches nothing and `set` launches only its own decision read (`pmset -g`).
+    func testWorkerRepliesReadTheRegistryAndLaunchNothingForReporting() throws {
+        let count = 5
+        for (operation, expectedLaunches) in [(#"{"operation":"status"}"#, 0), (#"{"operation":"set","awake":false}"#, count)] {
+            let runner = RecordingRunner()
+            runner.respond = { args in CommandOutput(stdout: args == ["-g"] ? "SleepDisabled 0" : "") }
+            let pmset = PMSet(runner: runner, setup: PrivilegeSetup(runner: runner), registryState: { false })
+            let session = try SleepSession(settings: pmset, journal: MemoryJournal())
+            var remaining = count, before: Int?, after: Int?
+            _ = SleepWorker.serve(session: session, receive: {
+                if before == nil { before = runner.calls.count }
+                remaining -= 1
+                if remaining < 0 { after = runner.calls.count; return nil }
+                return operation
+            }, reply: { XCTAssertNil($0.error); XCTAssertEqual($0.awake, false) })
+            XCTAssertEqual(after! - before!, expectedLaunches, operation)
+            XCTAssertTrue(runner.calls.allSatisfy { $0.1 == ["-g"] }, "no sudo write for \(operation)")
+        }
     }
 
     /// A runner that behaves like pmset behind sudo: `denied` values fail without changing anything.
@@ -99,8 +194,14 @@ final class SystemAdaptersTests: XCTestCase {
         runner.calls.filter { $0.0 == "/usr/bin/sudo" }.map { $0.1.last! }
     }
 
+    /// A registry that mirrors the fake pmset's state without recording a runner call.
+    private static func mirroredRegistry(_ runner: RecordingRunner) -> () throws -> Bool {
+        { try PMSet.parse(try runner.respond(["-g"]).stdout) }
+    }
+
     private func probe(_ runner: RecordingRunner) throws {
-        try PMSet(runner: runner, setup: PrivilegeSetup(runner: runner)).probeRule()
+        try PMSet(runner: runner, setup: PrivilegeSetup(runner: runner),
+                  registryState: Self.mirroredRegistry(runner)).probeRule()
     }
 
     func testPMSetProbeProvesBothDirectionsAndLeavesSleepEnabledWhenItStartedEnabled() throws {
@@ -135,7 +236,10 @@ final class SystemAdaptersTests: XCTestCase {
     /// PMSet with the setup-file check skipped, so a SleepSession can drive the real probe.
     private final class ProbingPower: PowerSettings {
         let pmset: PMSet
-        init(_ runner: RecordingRunner) { pmset = PMSet(runner: runner, setup: PrivilegeSetup(runner: runner)) }
+        init(_ runner: RecordingRunner) {
+            pmset = PMSet(runner: runner, setup: PrivilegeSetup(runner: runner),
+                          registryState: SystemAdaptersTests.mirroredRegistry(runner))
+        }
         func read() throws -> Bool { try pmset.read() }
         func requireAutomaticControl() throws { try pmset.probeRule() }
         func write(_ awake: Bool) throws { try pmset.write(awake) }
@@ -180,7 +284,8 @@ final class SystemAdaptersTests: XCTestCase {
 
     func testPMSetRequiresTheRuleFileBeforeProbing() {
         let runner = RecordingRunner()
-        let pmset = PMSet(runner: runner, setup: PrivilegeSetup(runner: runner, uid: 502, directory: directory.path))
+        let pmset = PMSet(runner: runner, setup: PrivilegeSetup(runner: runner, uid: 502, directory: directory.path),
+                          registryState: { throw ControlError.message("registry unavailable") })
         XCTAssertThrowsError(try pmset.requireAutomaticControl())
         XCTAssertTrue(runner.calls.isEmpty)
     }
@@ -188,7 +293,8 @@ final class SystemAdaptersTests: XCTestCase {
     func testPMSetReadPropagatesProcessFailureEvenWithValidLookingOutput() {
         let runner = RecordingRunner()
         runner.respond = { _ in throw ControlError.message("pmset unavailable") }
-        XCTAssertThrowsError(try PMSet(runner: runner, setup: PrivilegeSetup(runner: runner)).read())
+        XCTAssertThrowsError(try PMSet(runner: runner, setup: PrivilegeSetup(runner: runner),
+                                       registryState: { throw ControlError.message("registry unavailable") }).read())
     }
 
     func testNewSudoRuleParsesAndContainsOnlyTwoExactCommands() throws {

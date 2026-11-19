@@ -9,26 +9,37 @@ public protocol SleepControlling {
 
 protocol PowerSettings {
     func read() throws -> Bool
+    func currentState() throws -> Bool
     func requireAutomaticControl() throws
     func write(_ awake: Bool) throws
+}
+
+extension PowerSettings {
+    func currentState() throws -> Bool { try read() }
 }
 
 final class PMSet: PowerSettings {
     let runner: CommandRunning
     let setup: PrivilegeSetup
     private let registryState: () throws -> Bool
+    private let settleTimeout: TimeInterval
 
     init(runner: CommandRunning, setup: PrivilegeSetup,
-         registryState: @escaping () throws -> Bool = PMSet.registrySleepDisabled) {
+         registryState: @escaping () throws -> Bool = PMSet.registrySleepDisabled,
+         settleTimeout: TimeInterval = 2) {
         self.runner = runner
         self.setup = setup
         self.registryState = registryState
+        self.settleTimeout = settleTimeout
     }
 
-    /// `pmset -g` stays the primary source: it is what `write` verifies against. macOS 27 stopped
-    /// printing `SleepDisabled` there at all, so when the key is absent the value comes from
-    /// IOPMrootDomain, which still carries it. Output that does mention the key but cannot be
-    /// parsed stays an error — a failed read must never be reported as sleep enabled.
+    /// Two reads, two jobs. `read()` is the decision read: `pmset -g` is what every write is
+    /// checked against, and what setAwake, stop and the probe act on. macOS 27 stopped printing
+    /// `SleepDisabled` there at all, so when the key is absent the value comes from IOPMrootDomain,
+    /// which still carries it. Output that does mention the key but cannot be parsed stays an
+    /// error — a failed read must never be reported as sleep enabled. `currentState()` is the
+    /// reporting read: the registry, with no process launched, and `pmset -g` only when the
+    /// registry has no value.
     func read() throws -> Bool {
         let output = try runner.run("/usr/bin/pmset", ["-g"], timeout: 10).stdout
         do { return try Self.parse(output) }
@@ -37,6 +48,8 @@ final class PMSet: PowerSettings {
             return try registryState()
         }
     }
+
+    func currentState() throws -> Bool { try (try? registryState()) ?? read() }
 
     /// The live kernel value, readable without root. An absent property is an error, not a default.
     static func registrySleepDisabled() throws -> Bool {
@@ -90,11 +103,22 @@ final class PMSet: PowerSettings {
         _ = try runner.run("/usr/bin/sudo", ["-n", "-k", "/usr/bin/pmset", "-a", "disablesleep", awake ? "1" : "0"], timeout: 10)
     }
 
+    /// configd hands the value to the kernel after `pmset` returns, so the registry can lag.
+    /// Wait until it shows `awake`; with no registry value there is nothing to wait for.
+    private func settle(_ awake: Bool) throws {
+        let deadline = Date().addingTimeInterval(settleTimeout)
+        while let state = try? registryState(), state != awake {
+            guard Date() < deadline else { throw Self.notApplied }
+            Thread.sleep(forTimeInterval: 0.02)
+        }
+    }
+
+    private static let notApplied = ControlError.message("macOS did not apply the sleep setting. Try Repair Sleep Setup.")
+
     func write(_ awake: Bool) throws {
         try sudoWrite(awake)
-        guard try read() == awake else {
-            throw ControlError.message("macOS did not apply the sleep setting. Try Repair Sleep Setup.")
-        }
+        try settle(awake)
+        guard try read() == awake else { throw Self.notApplied }
     }
 }
 
@@ -126,7 +150,7 @@ final class SleepSession: SleepControlling {
         }
     }
 
-    func isAwake() throws -> Bool { try settings.read() }
+    func isAwake() throws -> Bool { try settings.currentState() }
 
     func setAwake(_ awake: Bool) throws {
         try recover()
